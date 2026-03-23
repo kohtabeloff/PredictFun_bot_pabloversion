@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PredictFun Bot</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #1a1a2e;
+      --card-bg:      #16213e;
+      --card-border:  #0f3460;
+      --card-border2: #1a3a70;
+      --accent-green: #00d4aa;
+      --accent-blue:  #4da6ff;
+      --red:          #ff4757;
+      --yellow:       #ffa502;
+      --text:         #e0e0e0;
+      --text2:        #888;
+      --header-bg:    #111128;
+      --input-bg:     #0d1b3e;
+      --settings-bg:  #0e1a38;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    /* ─── HEADER ─── */
+    header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--card-border);
+      padding: 10px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-row1 {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-blue);
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: var(--red);
+      transition: background .3s;
+      flex-shrink: 0;
+    }
+    .dot.on  { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+    .dot.off { background: var(--red); }
+    .info-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .balance-val { color: var(--accent-green); font-weight: 600; font-size: 14px; }
+    .orders-badge {
+      background: var(--card-border);
+      color: var(--text2);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+    }
+
+    /* ─── BUTTONS ─── */
+    .header-row2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 14px;
+      transition: opacity .2s, transform .1s;
+    }
+    button:active { transform: scale(.97); }
+    button:disabled { opacity: .4; cursor: default; }
+    .btn-start  { background: var(--accent-green); color: #111; }
+    .btn-stop   { background: var(--red);          color: #fff; }
+    .btn-cancel { background: var(--yellow);       color: #111; }
+    .btn-delete { background: transparent; border: 1px solid var(--card-border2); color: var(--red); font-size: 11px; padding: 3px 8px; border-radius: 4px; }
+    .btn-settings { background: transparent; border: 1px solid var(--card-border2); color: var(--accent-blue); font-size: 11px; padding: 3px 8px; border-radius: 4px; }
+    .btn-enable  { background: var(--accent-green); color: #111; font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 700; }
+    .btn-disable { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); font-size: 11px; padding: 3px 10px; border-radius: 4px; }
+    .btn-start-all { background: var(--accent-green); color: #111; padding: 6px 14px; font-size: 12px; font-weight: 700; }
+    .btn-save { background: var(--accent-green); color: #111; font-size: 11px; padding: 4px 12px; border-radius: 4px; }
+
+    /* ─── ADD MARKETS ─── */
+    .add-row {
+      display: flex;
+      gap: 8px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--card-border);
+      background: var(--header-bg);
+    }
+    .add-row input {
+      flex: 1;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 7px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+    .add-row input:focus { border-color: var(--accent-blue); }
+    .add-row input::placeholder { color: var(--text2); }
+    .btn-add { background: var(--accent-blue); color: #111; padding: 7px 16px; font-size: 13px; }
+
+    /* ─── LAYOUT ─── */
+    .layout {
+      display: flex;
+      height: calc(100vh - 100px);
+    }
+    .markets-col {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .console-col {
+      width: 360px;
+      min-width: 280px;
+      border-left: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+    }
+    .console-header {
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .console-clear { background: transparent; border: 1px solid var(--card-border); color: var(--text2); font-size: 11px; padding: 2px 8px; }
+    .console-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      font-family: 'Consolas', monospace;
+      font-size: 11px;
+    }
+
+    /* ─── EMPTY STATE ─── */
+    .empty-state {
+      text-align: center;
+      color: var(--text2);
+      padding: 60px 20px;
+      font-size: 15px;
+      line-height: 2;
+    }
+    .empty-state span { font-size: 36px; display: block; margin-bottom: 10px; }
+
+    /* ─── MARKET CARD ─── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .card:hover { border-color: var(--card-border2); }
+    @keyframes flashAlert {
+      0%, 100% { border-color: var(--card-border); }
+      50%       { border-color: var(--red); box-shadow: 0 0 12px var(--red); }
+    }
+    .flash-alert { animation: flashAlert .7s ease 2; }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px 8px;
+    }
+    .ws-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .ws-dot.on  { background: var(--accent-green); }
+    .ws-dot.off { background: var(--text2); }
+    .card-title {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .status-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .badge-REGISTERED { background: #1a4a3a; color: var(--accent-green); }
+    .badge-ACTIVE     { background: #1a3a4a; color: var(--accent-blue); }
+    .badge-INACTIVE   { background: #2a2a2a; color: var(--text2); }
+    .badge-UNKNOWN    { background: #2a2020; color: var(--red); }
+
+    /* grid of stats */
+    .card-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--card-border);
+      border-top: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--card-border);
+    }
+    .stat-cell {
+      background: var(--card-bg);
+      padding: 7px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .stat-label { font-size: 10px; color: var(--text2); }
+    .stat-value { font-size: 13px; font-weight: 600; }
+    .stat-value.green { color: var(--accent-green); }
+    .stat-value.blue  { color: var(--accent-blue); }
+    .stat-value.red   { color: var(--red); }
+    .stat-value.dim   { color: var(--text2); font-weight: 400; }
+
+    /* card footer */
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 12px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .footer-left { display: flex; align-items: center; gap: 8px; }
+    .card-ts { font-size: 11px; color: var(--text2); }
+    .card-id { font-size: 10px; color: var(--text2); opacity: .6; }
+
+    select {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      border-radius: 4px;
+      padding: 3px 6px;
+      font-size: 12px;
+      cursor: pointer;
+      outline: none;
+    }
+    select:focus { border-color: var(--accent-blue); }
+
+    /* ─── SETTINGS PANEL (раскрывающаяся) ─── */
+    .settings-panel {
+      display: none;
+      background: var(--settings-bg);
+      border-top: 1px solid var(--card-border);
+      padding: 12px;
+    }
+    .settings-panel.open { display: block; }
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .settings-grid.two-col { grid-template-columns: repeat(2, 1fr); }
+    .settings-group { display: flex; flex-direction: column; gap: 4px; }
+    .settings-label { font-size: 11px; color: var(--text2); }
+    .settings-input {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+      color: var(--text);
+      padding: 5px 8px;
+      font-size: 12px;
+      outline: none;
+      width: 100%;
+    }
+    .settings-input:focus { border-color: var(--accent-blue); }
+    .settings-divider {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 8px 0 6px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 4px;
+    }
+    .settings-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ─── LOG LINES ─── */
+    .log-line { display: flex; gap: 6px; padding: 2px 0; line-height: 1.5; }
+    .log-ts   { color: var(--text2); flex-shrink: 0; }
+    .log-lvl  { flex-shrink: 0; font-weight: 700; width: 36px; }
+    .lvl-INFO  { color: var(--accent-blue); }
+    .lvl-WARN  { color: var(--yellow); }
+    .lvl-ERROR { color: var(--red); }
+    .lvl-DEBUG { color: var(--text2); }
+    .log-msg  { color: var(--text); word-break: break-word; }
+
+    /* ─── EXECUTION ALERT ─── */
+    #exec-alert {
+      position: fixed;
+      top: -100px;
+      right: 20px;
+      background: var(--red);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 999;
+      transition: top .4s ease;
+      max-width: 360px;
+      box-shadow: 0 4px 20px rgba(255,71,87,.5);
+    }
+    #exec-alert.visible { top: 20px; }
+
+    /* ─── GLOBAL SETTINGS BAR ─── */
+    .global-bar {
+      background: #0e1625;
+      border-bottom: 1px solid var(--card-border);
+      padding: 0 20px;
+    }
+    .global-bar-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      cursor: pointer;
+      user-select: none;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent-blue);
+    }
+    .global-bar-toggle:hover { color: #7dc0ff; }
+    .global-bar-body {
+      display: none;
+      padding-bottom: 14px;
+    }
+    .global-bar-body.open { display: block; }
+    .global-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .global-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .global-field-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .global-field-header input[type=checkbox] {
+      width: 14px; height: 14px;
+      accent-color: var(--accent-blue);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .global-label {
+      font-size: 11px;
+      color: var(--text2);
+      cursor: pointer;
+    }
+    .global-label.active { color: var(--text); }
+    .global-input {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 4px;
+      color: var(--text2);
+      padding: 5px 8px;
+      font-size: 12px;
+      outline: none;
+      width: 100%;
+      opacity: .5;
+      pointer-events: none;
+    }
+    .global-input.enabled {
+      color: var(--text);
+      border-color: var(--accent-blue);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .global-input:focus { border-color: var(--accent-blue); }
+    .global-select {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text2);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 12px;
+      width: 100%;
+      outline: none;
+      opacity: .5;
+      pointer-events: none;
+    }
+    .global-select.enabled {
+      color: var(--text);
+      border-color: var(--accent-blue);
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .global-actions { display: flex; align-items: center; gap: 10px; }
+    .btn-apply-all {
+      background: var(--accent-blue);
+      color: #111;
+      font-size: 13px;
+      padding: 7px 20px;
+      border-radius: 6px;
+    }
+    .apply-hint { font-size: 11px; color: var(--text2); }
+
+    /* ─── MODAL SETTINGS ─── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border2);
+      border-radius: 10px;
+      width: 500px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent-blue);
+      margin-bottom: 20px;
+    }
+    .modal-section {
+      margin-bottom: 20px;
+    }
+    .modal-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .modal-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+    .modal-field label {
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .modal-field input {
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 13px;
+      outline: none;
+      font-family: monospace;
+    }
+    .modal-field input:focus { border-color: var(--accent-blue); }
+    .modal-field input::placeholder { color: var(--text2); }
+    .modal-note {
+      font-size: 11px;
+      color: var(--yellow);
+      margin-top: -6px;
+      margin-bottom: 10px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .btn-modal-save { background: var(--accent-green); color: #111; padding: 8px 20px; font-size: 13px; }
+    .btn-modal-cancel { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); padding: 8px 16px; font-size: 13px; }
+    .modal-hint { font-size: 11px; color: var(--text2); }
+
+    /* ─── SCROLLBAR ─── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<div id="exec-alert"></div>
+
+<header>
+  <div class="header-row1">
+    <span class="logo">⚡ PredictFun Bot</span>
+
+    <div class="status-pill">
+      <span class="dot off" id="dot-bot"></span>
+      <span id="bot-status-text">Остановлен</span>
+    </div>
+    <div class="status-pill">
+      <span class="dot off" id="dot-ws"></span>
+      <span id="ws-status-text">WS нет</span>
+    </div>
+
+    <div class="info-right">
+      <span id="ws-addr" style="color:var(--text2);font-size:11px;font-family:monospace">—</span>
+      <span>Баланс: <span class="balance-val" id="balance-display">—</span></span>
+      <span class="orders-badge" id="orders-badge">0 ордеров</span>
+    </div>
+  </div>
+
+  <div class="header-row2">
+    <button class="btn-start" id="btn-start" onclick="botStart()">▶ СТАРТ</button>
+    <button class="btn-stop"  id="btn-stop"  onclick="botStop()"  disabled>■ СТОП</button>
+    <button class="btn-start-all" onclick="enableAll(true)">▶ Запустить все</button>
+    <button class="btn-cancel" onclick="cancelAll()">✕ Отменить все ордера</button>
+    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="openBotSettings()">⚙ Настройки</button>
+  </div>
+</header>
+
+<div class="add-row">
+  <input id="market-ids-input" type="text"
+    placeholder="ID рынков через запятую: 1234, 5678, 9012…">
+  <button class="btn-add" onclick="addMarkets()">Добавить</button>
+</div>
+
+<!-- ГЛОБАЛЬНЫЕ НАСТРОЙКИ -->
+<div class="global-bar">
+  <div class="global-bar-toggle" onclick="toggleGlobalBar()">
+    <span id="global-bar-arrow">▶</span>
+    📋 Общие настройки — применить ко всем маркетам
+  </div>
+  <div class="global-bar-body" id="global-bar-body">
+    <div class="global-fields">
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-usdt" onchange="gbToggle('usdt')">
+          <label class="global-label" id="gb-lbl-usdt" for="gb-cb-usdt">Позиция USDT</label>
+        </div>
+        <input class="global-input" id="gb-usdt" type="number" min="1" value="100" placeholder="100" disabled>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-liq" onchange="gbToggle('liq')">
+          <label class="global-label" id="gb-lbl-liq" for="gb-cb-liq">Целевая ликвидность, $</label>
+        </div>
+        <input class="global-input" id="gb-liq" type="number" min="0" value="1000" placeholder="1000" disabled>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-spread" onchange="gbToggle('spread')">
+          <label class="global-label" id="gb-lbl-spread" for="gb-cb-spread">Макс. авто-спред, %</label>
+        </div>
+        <input class="global-input" id="gb-spread" type="number" min="0" step="0.1" value="6" placeholder="6" disabled>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-minspr" onchange="gbToggle('minspr')">
+          <label class="global-label" id="gb-lbl-minspr" for="gb-cb-minspr">Мин. спред, ¢</label>
+        </div>
+        <input class="global-input" id="gb-minspr" type="number" min="0" step="0.1" value="0.2" placeholder="0.2" disabled>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-mode" onchange="gbToggle('mode')">
+          <label class="global-label" id="gb-lbl-mode" for="gb-cb-mode">Режим ликвидности</label>
+        </div>
+        <select class="global-select" id="gb-mode" disabled>
+          <option value="bid">BID (стандарт)</option>
+          <option value="ask">ASK</option>
+        </select>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-side" onchange="gbToggle('side')">
+          <label class="global-label" id="gb-lbl-side" for="gb-cb-side">Сторона</label>
+        </div>
+        <select class="global-select" id="gb-side" disabled>
+          <option value="both">Обе стороны</option>
+          <option value="yes">Только YES</option>
+          <option value="no">Только NO</option>
+        </select>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-vlimit" onchange="gbToggle('vlimit')">
+          <label class="global-label" id="gb-lbl-vlimit" for="gb-cb-vlimit">Лимит переставлений</label>
+        </div>
+        <input class="global-input" id="gb-vlimit" type="number" min="0" value="0" placeholder="0=выкл" disabled>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-vwindow" onchange="gbToggle('vwindow')">
+          <label class="global-label" id="gb-lbl-vwindow" for="gb-cb-vwindow">Окно волатильности, сек</label>
+        </div>
+        <input class="global-input" id="gb-vwindow" type="number" min="1" value="60" placeholder="60" disabled>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-vcool" onchange="gbToggle('vcool')">
+          <label class="global-label" id="gb-lbl-vcool" for="gb-cb-vcool">Кулдаун волатильности, сек</label>
+        </div>
+        <input class="global-input" id="gb-vcool" type="number" min="0" value="300" placeholder="300" disabled>
+      </div>
+
+    </div>
+    <div class="global-actions">
+      <button class="btn-apply-all" onclick="applyGlobalSettings()">✔ Применить ко всем</button>
+      <span class="apply-hint" id="gb-hint">Отметь галочкой параметры которые хочешь изменить</span>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="markets-col" id="markets-panel">
+    <div class="empty-state" id="empty-state">
+      <span>📊</span>
+      Нет активных рынков.<br>Вставьте ID рынков выше и нажмите «Добавить».
+    </div>
+  </div>
+
+  <div class="console-col">
+    <div class="console-header">
+      Консоль
+      <button class="console-clear" onclick="clearConsole()">Очистить</button>
+    </div>
+    <div class="console-body" id="console-body"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── СОСТОЯНИЕ ────────────────────────────────────────────────────────────────
+const state = {
+  running: false,
+  ws_connected: false,
+  balance: null,
+  orders_count: 0,
+  markets: {}
+};
+
+const MAX_LOG_LINES = 200;
+let logLines = [];
+let updateTimers = {};
+let execAlertTimer = null;
+let openSettings = {};   // market_id -> bool
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  fetchInitialState();
+  connectWebSocket();
+  setInterval(updateTimestamps, 5000);
+});
+
+// ─── REST API ─────────────────────────────────────────────────────────────────
+async function apiFetch(method, url, body) {
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      appendLog('ERROR', `${method} ${url} → ${res.status}: ${txt.slice(0, 120)}`);
+      return null;
+    }
+    return res.json().catch(() => null);
+  } catch (e) {
+    appendLog('ERROR', `Ошибка запроса ${url}: ${e.message}`);
+    return null;
+  }
+}
+
+async function fetchInitialState() {
+  const data = await apiFetch('GET', '/api/state');
+  if (data) applyBotState(data);
+}
+
+async function botStart() {
+  document.getElementById('btn-start').disabled = true;
+  const res = await apiFetch('POST', '/api/bot/start');
+  if (!res) document.getElementById('btn-start').disabled = false;
+}
+
+async function botStop() {
+  document.getElementById('btn-stop').disabled = true;
+  const res = await apiFetch('POST', '/api/bot/stop');
+  if (!res) document.getElementById('btn-stop').disabled = false;
+}
+
+async function cancelAll() {
+  if (!confirm('Отменить все открытые ордера?')) return;
+  await apiFetch('POST', '/api/cancel-all');
+}
+
+async function addMarkets() {
+  const input = document.getElementById('market-ids-input');
+  const raw = input.value.trim();
+  if (!raw) return;
+  const ids = raw.split(',').map(s => s.trim()).filter(Boolean);
+  if (!ids.length) return;
+  appendLog('INFO', `Добавляем рынки: ${ids.join(', ')}`);
+  const res = await apiFetch('POST', '/api/markets', { market_ids: ids });
+  if (res) {
+    input.value = '';
+    const results = res.results || {};
+    let ok = 0, fail = 0;
+    Object.entries(results).forEach(([id, status]) => {
+      if (status === 'ok') {
+        ok++;
+        appendLog('INFO', `✓ Рынок ${id} добавлен`);
+      } else if (status === 'already_exists') {
+        appendLog('INFO', `Рынок ${id}: уже добавлен`);
+      } else {
+        fail++;
+        appendLog('ERROR', `✗ Рынок ${id}: ${status}`);
+      }
+    });
+    if (ok) appendLog('INFO', `Добавлено: ${ok} рынк${ok===1?'':ok<5?'а':'ов'}`);
+    if (fail) appendLog('ERROR', `Ошибки при добавлении: ${fail} рынк${fail===1?'':fail<5?'а':'ов'}`);
+  }
+}
+
+async function deleteMarket(marketId) {
+  if (!confirm(`Удалить рынок ${marketId}?`)) return;
+  await apiFetch('DELETE', `/api/markets/${marketId}`);
+  delete state.markets[marketId];
+  delete openSettings[marketId];
+  removeCard(marketId);
+  checkEmpty();
+}
+
+async function saveSettings(marketId) {
+  const get = id => document.getElementById(id);
+  const floatVal = id => {
+    const v = parseFloat((get(id) || {}).value);
+    return isNaN(v) ? undefined : v;
+  };
+  const intVal = id => {
+    const v = parseInt((get(id) || {}).value);
+    return isNaN(v) ? undefined : v;
+  };
+  const strVal = id => ((get(id) || {}).value || '').trim() || undefined;
+
+  const body = {
+    side:                       strVal(`s-side-${marketId}`),
+    position_size_usdt:         floatVal(`s-usdt-${marketId}`),
+    target_liquidity:           floatVal(`s-liq-${marketId}`),
+    max_auto_spread:            floatVal(`s-spread-${marketId}`),
+    min_spread:                 floatVal(`s-minspr-${marketId}`),
+    liquidity_mode:             strVal(`s-mode-${marketId}`),
+    volatile_reposition_limit:  intVal(`s-vlimit-${marketId}`),
+    volatile_window_seconds:    floatVal(`s-vwindow-${marketId}`),
+    volatile_cooldown_seconds:  floatVal(`s-vcool-${marketId}`),
+  };
+
+  // убираем undefined
+  Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+
+  const res = await apiFetch('PUT', `/api/markets/${marketId}/settings`, body);
+  if (res) {
+    appendLog('INFO', `[${marketId}] Настройки сохранены`);
+    // обновляем локальное состояние
+    if (state.markets[marketId]) {
+      state.markets[marketId].settings = { ...state.markets[marketId].settings, ...body };
+      // перерисовываем шапку карточки (не сами настройки, они останутся открытыми)
+      refreshCardTop(marketId);
+    }
+  }
+}
+
+// ─── WEBSOCKET ────────────────────────────────────────────────────────────────
+let ws = null, wsReconnectTimer = null, wsDelay = 2000;
+
+async function connectWebSocket() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  // Получаем WS-токен через API (авторизованный запрос)
+  let wsUrl = `${proto}://${location.host}/ws`;
+  try {
+    const r = await fetch('/api/ws-token');
+    if (r.ok) {
+      const d = await r.json();
+      if (d.token) wsUrl += `?token=${encodeURIComponent(d.token)}`;
+    }
+  } catch(e) {}
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    wsDelay = 2000;
+    setWsDot(true);
+    appendLog('INFO', 'WebSocket подключён');
+  };
+  ws.onclose = () => {
+    setWsDot(false);
+    appendLog('WARN', 'WebSocket отключён, повтор...');
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = setTimeout(() => {
+      connectWebSocket();
+      wsDelay = Math.min(wsDelay * 1.5, 30000);
+    }, wsDelay);
+  };
+  ws.onerror = () => setWsDot(false);
+  ws.onmessage = evt => {
+    try { handleWsMessage(JSON.parse(evt.data)); } catch (e) {}
+  };
+}
+
+function setWsDot(on) {
+  document.getElementById('dot-ws').className = 'dot ' + (on ? 'on' : 'off');
+  document.getElementById('ws-status-text').textContent = on ? 'WS ок' : 'WS нет';
+}
+
+function handleWsMessage(msg) {
+  switch (msg.type) {
+    case 'bot_state':     applyBotState(msg.data || msg); break;
+    case 'market_update': applyMarketUpdate(msg.market_id, msg.data); break;
+    case 'log':           appendLog(msg.level, msg.msg, msg.ts); break;
+    case 'logs':          (msg.logs || []).forEach(l => appendLog(l.level, l.msg, l.ts)); break;
+    case 'balance':       updateBalance(msg.balance); break;
+    case 'orders_count':  updateOrdersCount(msg.count); break;
+    case 'execution_alert': showExecutionAlert(msg); break;
+  }
+}
+
+// ─── STATE HANDLING ───────────────────────────────────────────────────────────
+function applyBotState(data) {
+  state.running      = !!data.running;
+  state.ws_connected = !!data.ws_connected;
+  updateBotStatusUI();
+  if (data.balance_usdt !== undefined) updateBalance(data.balance_usdt);
+  if (data.total_open_orders !== undefined) updateOrdersCount(data.total_open_orders);
+  if (data.account_address) {
+    const a = data.account_address;
+    document.getElementById('ws-addr').textContent = a.slice(0,8)+'…'+a.slice(-4);
+  }
+  if (data.markets && typeof data.markets === 'object') {
+    Object.entries(data.markets).forEach(([id, ms]) => {
+      state.markets[id] = ms;
+      renderOrUpdateCard(id, ms);
+    });
+    checkEmpty();
+  }
+}
+
+function applyMarketUpdate(id, ms) {
+  if (!id || !ms) return;
+  state.markets[id] = ms;
+  renderOrUpdateCard(id, ms);
+  checkEmpty();
+}
+
+function updateBotStatusUI() {
+  const dot  = document.getElementById('dot-bot');
+  const txt  = document.getElementById('bot-status-text');
+  const btnS = document.getElementById('btn-start');
+  const btnP = document.getElementById('btn-stop');
+  if (state.running) {
+    dot.className = 'dot on';
+    txt.textContent = 'Работает';
+    btnS.disabled = true;
+    btnP.disabled = false;
+  } else {
+    dot.className = 'dot off';
+    txt.textContent = 'Остановлен';
+    btnS.disabled = false;
+    btnP.disabled = true;
+  }
+}
+
+function updateBalance(val) {
+  const el = document.getElementById('balance-display');
+  el.textContent = (val !== null && val !== undefined) ? '$'+parseFloat(val).toFixed(2) : '—';
+}
+
+function updateOrdersCount(n) {
+  state.orders_count = n || 0;
+  document.getElementById('orders-badge').textContent =
+    `${state.orders_count} ордер${ordersLabel(state.orders_count)}`;
+}
+
+function ordersLabel(n) {
+  if (n % 10 === 1 && n % 100 !== 11) return '';
+  if ([2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100)) return 'а';
+  return 'ов';
+}
+
+// ─── MARKET CARDS ─────────────────────────────────────────────────────────────
+function renderOrUpdateCard(id, ms) {
+  let card = document.getElementById(`card-${id}`);
+  if (card) {
+    updateCard(card, id, ms);
+  } else {
+    card = document.createElement('div');
+    card.className = 'card';
+    card.id = `card-${id}`;
+    document.getElementById('empty-state')?.remove();
+    document.getElementById('markets-panel').appendChild(card);
+    card.innerHTML = buildCardHTML(id, ms);
+  }
+
+  if (!updateTimers[id]) {
+    updateTimers[id] = setInterval(() => {
+      const ts = document.getElementById(`ts-${id}`);
+      if (ts && state.markets[id]) ts.textContent = 'обновлено ' + formatAge(state.markets[id].last_update);
+    }, 5000);
+  }
+}
+
+function updateCard(card, id, ms) {
+  // Если настройки открыты — не затираем settings-panel
+  const settingsOpen = openSettings[id];
+  card.innerHTML = buildCardHTML(id, ms);
+  if (settingsOpen) {
+    openSettings[id] = true;
+    const sp = card.querySelector('.settings-panel');
+    if (sp) sp.classList.add('open');
+  }
+}
+
+function refreshCardTop(id) {
+  const ms = state.markets[id];
+  if (!ms) return;
+  updateCard(document.getElementById(`card-${id}`), id, ms);
+}
+
+function toggleSettings(id) {
+  openSettings[id] = !openSettings[id];
+  const sp = document.getElementById(`settings-${id}`);
+  if (sp) sp.classList.toggle('open', openSettings[id]);
+  const btn = document.getElementById(`btn-set-${id}`);
+  if (btn) btn.textContent = openSettings[id] ? '▲ Скрыть' : '⚙ Настройки';
+}
+
+function buildCardHTML(id, m) {
+  const title  = trunc(m.title || id, 50);
+  const status = m.status || 'UNKNOWN';
+  const badges = { REGISTERED:1, ACTIVE:1, INACTIVE:1 };
+  const badgeCls = badges[status] ? `badge-${status}` : 'badge-UNKNOWN';
+
+  const wsOn = !!m.ws_connected;
+  const calc = m.last_calculation || {};
+  const oY = m.order_yes || null;
+  const oN = m.order_no  || null;
+  const s  = m.settings  || {};
+
+  const yPrice  = oY ? fmtCents(oY.price)  : '—';
+  const yShares = oY ? fmtSh(oY.shares)    : '—';
+  const nPrice  = oN ? fmtCents(oN.price)  : '—';
+  const nShares = oN ? fmtSh(oN.shares)    : '—';
+  const mid     = calc.mid_price_yes !== undefined ? fmtCents(calc.mid_price_yes) : '—';
+  const liqY    = calc.liquidity_yes !== undefined ? '$'+fmtNum(calc.liquidity_yes) : '—';
+  const liqN    = calc.liquidity_no  !== undefined ? '$'+fmtNum(calc.liquidity_no)  : '—';
+  const canY    = calc.can_place_yes;
+  const canN    = calc.can_place_no;
+  const age     = m.last_update ? formatAge(m.last_update) : '—';
+  const settOpen = !!openSettings[id];
+
+  // стороны
+  const sides = [
+    { v:'both', l:'Обе стороны' },
+    { v:'yes',  l:'Только YES' },
+    { v:'no',   l:'Только NO' },
+  ];
+  const sideOpts = sides.map(o =>
+    `<option value="${o.v}" ${(s.side||'both')===o.v?'selected':''}>${o.l}</option>`
+  ).join('');
+
+  // режимы ликвидности
+  const modes = [{ v:'bid', l:'BID (стандарт)' }, { v:'ask', l:'ASK' }];
+  const modeOpts = modes.map(o =>
+    `<option value="${o.v}" ${(s.liquidity_mode||'bid')===o.v?'selected':''}>${o.l}</option>`
+  ).join('');
+
+  return `
+    <div class="card-top">
+      <span class="ws-dot ${wsOn?'on':'off'}" title="WS ${wsOn?'ок':'нет'}"></span>
+      <span class="card-title" title="${esc(m.title||id)}">${esc(title)}</span>
+      <span class="status-badge ${badgeCls}">${esc(status)}</span>
+    </div>
+
+    <div class="card-stats">
+      <div class="stat-cell">
+        <span class="stat-label">YES цена</span>
+        <span class="stat-value ${oY?'green':'dim'}">${yPrice}</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">YES акции</span>
+        <span class="stat-value ${oY?'green':'dim'}">${yShares}</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">NO цена</span>
+        <span class="stat-value ${oN?'blue':'dim'}">${nPrice}</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">NO акции</span>
+        <span class="stat-value ${oN?'blue':'dim'}">${nShares}</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">Мид цена</span>
+        <span class="stat-value">${mid}</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">Ликв. YES</span>
+        <span class="stat-value ${canY===false?'red':''}" title="Мин: $${fmtNum(calc.min_liquidity)}">${liqY}</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">Ликв. NO</span>
+        <span class="stat-value ${canN===false?'red':''}" title="Мин: $${fmtNum(calc.min_liquidity)}">${liqN}</span>
+      </div>
+      <div class="stat-cell">
+        <span class="stat-label">Размер $</span>
+        <span class="stat-value">${s.position_size_usdt ? '$'+s.position_size_usdt : '—'}</span>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div class="footer-left">
+        <button id="btn-enable-${escA(id)}"
+          class="${s.enabled ? 'btn-disable' : 'btn-enable'}"
+          onclick="toggleEnable('${escA(id)}')">
+          ${s.enabled ? '■ Стоп' : '▶ Запустить'}
+        </button>
+        <button class="btn-settings" id="btn-set-${escA(id)}"
+          onclick="toggleSettings('${escA(id)}')">
+          ${settOpen ? '▲ Скрыть' : '⚙ Настройки'}
+        </button>
+        <button class="btn-delete" onclick="deleteMarket('${escA(id)}')">Удалить</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="card-id">#${esc(id)}</span>
+        <span class="card-ts" id="ts-${escA(id)}">обновлено ${esc(age)}</span>
+      </div>
+    </div>
+
+    <div class="settings-panel ${settOpen?'open':''}" id="settings-${escA(id)}">
+      <div class="settings-divider">Основные</div>
+      <div class="settings-grid">
+        <div class="settings-group">
+          <label class="settings-label">Сторона</label>
+          <select id="s-side-${escA(id)}">${sideOpts}</select>
+        </div>
+        <div class="settings-group">
+          <label class="settings-label">Позиция USDT</label>
+          <input class="settings-input" id="s-usdt-${escA(id)}" type="number" min="1"
+            value="${s.position_size_usdt ?? ''}" placeholder="100">
+        </div>
+        <div class="settings-group">
+          <label class="settings-label">Режим ликвидности</label>
+          <select id="s-mode-${escA(id)}">${modeOpts}</select>
+        </div>
+      </div>
+
+      <div class="settings-divider">Ликвидность и спред</div>
+      <div class="settings-grid">
+        <div class="settings-group">
+          <label class="settings-label">Целевая ликвидность, $</label>
+          <input class="settings-input" id="s-liq-${escA(id)}" type="number" min="0"
+            value="${s.target_liquidity ?? 1000}" placeholder="1000">
+        </div>
+        <div class="settings-group">
+          <label class="settings-label">Макс. авто-спред, %</label>
+          <input class="settings-input" id="s-spread-${escA(id)}" type="number" min="0" step="0.1"
+            value="${s.max_auto_spread ?? 6}" placeholder="6">
+        </div>
+        <div class="settings-group">
+          <label class="settings-label">Мин. спред, ¢</label>
+          <input class="settings-input" id="s-minspr-${escA(id)}" type="number" min="0" step="0.1"
+            value="${s.min_spread ?? 0.2}" placeholder="0.2">
+        </div>
+      </div>
+
+      <div class="settings-divider">Защита от волатильности</div>
+      <div class="settings-grid">
+        <div class="settings-group">
+          <label class="settings-label">Лимит переставлений (0=выкл)</label>
+          <input class="settings-input" id="s-vlimit-${escA(id)}" type="number" min="0"
+            value="${s.volatile_reposition_limit ?? 0}" placeholder="0">
+        </div>
+        <div class="settings-group">
+          <label class="settings-label">Окно, сек</label>
+          <input class="settings-input" id="s-vwindow-${escA(id)}" type="number" min="0"
+            value="${s.volatile_window_seconds ?? 60}" placeholder="60">
+        </div>
+        <div class="settings-group">
+          <label class="settings-label">Кулдаун, сек</label>
+          <input class="settings-input" id="s-vcool-${escA(id)}" type="number" min="0"
+            value="${s.volatile_cooldown_seconds ?? 300}" placeholder="300">
+        </div>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn-save" onclick="saveSettings('${escA(id)}')">💾 Сохранить</button>
+      </div>
+    </div>
+  `;
+}
+
+function removeCard(id) {
+  document.getElementById(`card-${id}`)?.remove();
+  clearInterval(updateTimers[id]);
+  delete updateTimers[id];
+}
+
+function checkEmpty() {
+  const panel = document.getElementById('markets-panel');
+  const has = Object.keys(state.markets).length > 0;
+  const em  = document.getElementById('empty-state');
+  if (!has && !em) {
+    const div = document.createElement('div');
+    div.className = 'empty-state';
+    div.id = 'empty-state';
+    div.innerHTML = '<span>📊</span>Нет активных рынков.<br>Вставьте ID рынков выше и нажмите «Добавить».';
+    panel.appendChild(div);
+  } else if (has && em) {
+    em.remove();
+  }
+}
+
+function updateTimestamps() {
+  Object.keys(state.markets).forEach(id => {
+    const ts = document.getElementById(`ts-${id}`);
+    if (ts && state.markets[id]?.last_update)
+      ts.textContent = 'обновлено ' + formatAge(state.markets[id].last_update);
+  });
+}
+
+// ─── EXECUTION ALERT ─────────────────────────────────────────────────────────
+function showExecutionAlert(msg) {
+  const el = document.getElementById('exec-alert');
+  const side = (msg.side || '').toUpperCase();
+  el.innerHTML = `⚡ ИСПОЛНЕН ОРДЕР [${side}]<br>Рынок: ${esc(msg.market_id||'')} · ${fmtCents(msg.price)} × ${fmtSh(msg.shares)}`;
+  el.classList.add('visible');
+  const card = document.getElementById(`card-${msg.market_id}`);
+  if (card) {
+    card.classList.remove('flash-alert');
+    void card.offsetWidth;
+    card.classList.add('flash-alert');
+    setTimeout(() => card.classList.remove('flash-alert'), 1400);
+  }
+  clearTimeout(execAlertTimer);
+  execAlertTimer = setTimeout(() => el.classList.remove('visible'), 6000);
+}
+
+// ─── CONSOLE ─────────────────────────────────────────────────────────────────
+function appendLog(level, msg, ts) {
+  const lvl = (level || 'INFO').toUpperCase();
+  const t   = ts ? fmtLogTs(ts) : nowTs();
+  logLines.push({ ts: t, level: lvl, msg });
+  if (logLines.length > MAX_LOG_LINES) logLines.shift();
+  const body = document.getElementById('console-body');
+  const div  = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-ts">${esc(t)}</span><span class="log-lvl lvl-${esc(lvl)}">${esc(lvl)}</span><span class="log-msg">${esc(msg)}</span>`;
+  body.appendChild(div);
+  while (body.childElementCount > MAX_LOG_LINES) body.removeChild(body.firstChild);
+  body.scrollTop = body.scrollHeight;
+}
+
+function clearConsole() {
+  logLines = [];
+  document.getElementById('console-body').innerHTML = '';
+}
+
+// ─── ФОРМАТИРОВАНИЕ ──────────────────────────────────────────────────────────
+function fmtCents(p) { return p==null ? '—' : (parseFloat(p)*100).toFixed(1)+'¢'; }
+function fmtSh(s)    { if (s==null) return '—'; const n=parseFloat(s); return n>=1000?(n/1000).toFixed(2)+'k':n.toFixed(1); }
+function fmtNum(n)   { if (n==null) return '—'; const v=parseFloat(n); return v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0); }
+function trunc(s,n)  { return s && s.length>n ? s.slice(0,n)+'…' : (s||''); }
+function esc(s)      { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function escA(s)     { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function nowTs()     { return new Date().toLocaleTimeString('ru-RU',{hour12:false}); }
+function formatAge(t){ if(!t)return'—'; const s=Math.floor(Date.now()/1000)-t; if(s<5)return'только что'; if(s<60)return`${s} сек назад`; if(s<3600)return`${Math.floor(s/60)} мин назад`; return`${Math.floor(s/3600)} ч назад`; }
+function fmtLogTs(ts){ if(!ts)return nowTs(); if(typeof ts==='number'){return new Date(ts*1000).toLocaleTimeString('ru-RU',{hour12:false});} const m=String(ts).match(/\d{2}:\d{2}:\d{2}/); return m?m[0]:String(ts).slice(0,8); }
+
+// ─── ГЛОБАЛЬНЫЕ НАСТРОЙКИ ────────────────────────────────────────────────────
+function toggleGlobalBar() {
+  const body  = document.getElementById('global-bar-body');
+  const arrow = document.getElementById('global-bar-arrow');
+  const open  = body.classList.toggle('open');
+  arrow.textContent = open ? '▼' : '▶';
+}
+
+function gbToggle(key) {
+  const cb  = document.getElementById(`gb-cb-${key}`);
+  const inp = document.getElementById(`gb-${key}`);
+  const lbl = document.getElementById(`gb-lbl-${key}`);
+  const on  = cb.checked;
+  inp.disabled = !on;
+  inp.classList.toggle('enabled', on);
+  lbl.classList.toggle('active', on);
+}
+
+async function applyGlobalSettings() {
+  const checked = key => document.getElementById(`gb-cb-${key}`)?.checked;
+  const flt = id => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? undefined : v; };
+  const int = id => { const v = parseInt(document.getElementById(id)?.value);   return isNaN(v) ? undefined : v; };
+  const sel = id => document.getElementById(id)?.value || undefined;
+
+  const body = {};
+  if (checked('usdt'))    body.position_size_usdt         = flt('gb-usdt');
+  if (checked('liq'))     body.target_liquidity           = flt('gb-liq');
+  if (checked('spread'))  body.max_auto_spread            = flt('gb-spread');
+  if (checked('minspr'))  body.min_spread                 = flt('gb-minspr');
+  if (checked('mode'))    body.liquidity_mode             = sel('gb-mode');
+  if (checked('side'))    body.side                       = sel('gb-side');
+  if (checked('vlimit'))  body.volatile_reposition_limit  = int('gb-vlimit');
+  if (checked('vwindow')) body.volatile_window_seconds    = flt('gb-vwindow');
+  if (checked('vcool'))   body.volatile_cooldown_seconds  = flt('gb-vcool');
+
+  // Убираем undefined
+  Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
+
+  if (Object.keys(body).length === 0) {
+    document.getElementById('gb-hint').textContent = '⚠ Отметь хотя бы один параметр';
+    document.getElementById('gb-hint').style.color = 'var(--red)';
+    setTimeout(() => {
+      document.getElementById('gb-hint').textContent = 'Отметь галочкой параметры которые хочешь изменить';
+      document.getElementById('gb-hint').style.color = '';
+    }, 3000);
+    return;
+  }
+
+  const marketCount = Object.keys(state.markets).length;
+  if (marketCount === 0) {
+    appendLog('WARN', 'Нет загруженных маркетов');
+    return;
+  }
+
+  const hint = document.getElementById('gb-hint');
+  hint.textContent = '⏳ Применяю...';
+
+  const res = await apiFetch('PUT', '/api/markets/settings/bulk', body);
+  if (res) {
+    const n = res.updated || 0;
+    hint.textContent = `✔ Применено к ${n} маркет${n===1?'у':n<5?'ам':'ам'}`;
+    hint.style.color = 'var(--accent-green)';
+    appendLog('INFO', `Глобальные настройки применены к ${n} маркетам: ${Object.keys(body).join(', ')}`);
+    setTimeout(() => {
+      hint.textContent = 'Отметь галочкой параметры которые хочешь изменить';
+      hint.style.color = '';
+    }, 4000);
+    // Обновить карточки с новыми настройками
+    if (res.results) {
+      Object.entries(res.results).forEach(([mid, settings]) => {
+        if (state.markets[mid]) {
+          state.markets[mid].settings = settings;
+          const card = document.getElementById(`card-${mid}`);
+          if (card) updateCard(card, mid, state.markets[mid]);
+        }
+      });
+    }
+  } else {
+    hint.textContent = '✗ Ошибка';
+    hint.style.color = 'var(--red)';
+    setTimeout(() => { hint.textContent = 'Отметь галочкой параметры которые хочешь изменить'; hint.style.color = ''; }, 3000);
+  }
+}
+
+// ─── ВКЛЮЧЕНИЕ / ВЫКЛЮЧЕНИЕ ОРДЕРОВ ─────────────────────────────────────────
+async function toggleEnable(id) {
+  const mkt = state.markets[id];
+  if (!mkt) return;
+  const newVal = !mkt.settings.enabled;
+  const res = await apiFetch('PUT', `/api/markets/${encodeURIComponent(id)}/settings`, { enabled: newVal });
+  if (res) {
+    mkt.settings.enabled = newVal;
+    const btn = document.getElementById(`btn-enable-${id}`);
+    if (btn) {
+      btn.className = newVal ? 'btn-disable' : 'btn-enable';
+      btn.textContent = newVal ? '■ Стоп' : '▶ Запустить';
+    }
+    // При остановке — сразу отменяем ордера
+    if (!newVal) {
+      await apiFetch('POST', `/api/markets/${encodeURIComponent(id)}/cancel`);
+    }
+  }
+}
+
+async function enableAll(val) {
+  const ids = Object.keys(state.markets);
+  if (!ids.length) { appendLog('WARN', 'Нет загруженных маркетов'); return; }
+  const res = await apiFetch('PUT', '/api/markets/settings/bulk', { enabled: val });
+  if (res) {
+    ids.forEach(id => {
+      if (state.markets[id]) state.markets[id].settings.enabled = val;
+      const btn = document.getElementById(`btn-enable-${id}`);
+      if (btn) {
+        btn.className = val ? 'btn-disable' : 'btn-enable';
+        btn.textContent = val ? '■ Стоп' : '▶ Запустить';
+      }
+    });
+    appendLog('INFO', val ? `Запущено ${ids.length} маркетов` : `Остановлено ${ids.length} маркетов`);
+  }
+}
+
+// ─── КЛАВИАТУРА ──────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement === document.getElementById('market-ids-input'))
+    addMarkets();
+  if (e.key === 'Escape') closeBotSettings();
+});
+
+// ─── НАСТРОЙКИ БОТА (модал) ──────────────────────────────────────────────────
+async function openBotSettings() {
+  const data = await apiFetch('GET', '/api/config');
+  if (!data) return;
+
+  document.getElementById('cfg-api-key').value        = data.api_key || '';
+  document.getElementById('cfg-address').value         = data.predict_account_address || '';
+  document.getElementById('cfg-privkey').value         = '';
+  document.getElementById('cfg-privkey').placeholder   = data.privy_wallet_private_key_set
+    ? '● сохранён (оставь пустым чтобы не менять)'
+    : 'Вставь приватный ключ';
+  document.getElementById('cfg-proxy').value           = data.proxy || '';
+  document.getElementById('cfg-tg-token').value        = data.telegram_token || '';
+  document.getElementById('cfg-tg-chat').value         = data.telegram_chat_id || '';
+  document.getElementById('cfg-ui-password').value     = '';
+
+  document.getElementById('bot-settings-modal').classList.add('open');
+}
+
+function closeBotSettings() {
+  document.getElementById('bot-settings-modal').classList.remove('open');
+}
+
+async function saveBotSettings() {
+  const body = {
+    api_key:                    document.getElementById('cfg-api-key').value.trim(),
+    predict_account_address:    document.getElementById('cfg-address').value.trim(),
+    privy_wallet_private_key:   document.getElementById('cfg-privkey').value.trim(),
+    proxy:                      document.getElementById('cfg-proxy').value.trim(),
+    telegram_token:             document.getElementById('cfg-tg-token').value.trim(),
+    telegram_chat_id:           document.getElementById('cfg-tg-chat').value.trim(),
+    ui_password:                document.getElementById('cfg-ui-password').value,
+  };
+
+  const hint = document.getElementById('cfg-hint');
+  hint.textContent = '⏳ Сохраняю...';
+  hint.style.color = '';
+
+  const res = await apiFetch('POST', '/api/config', body);
+  if (res && res.ok) {
+    hint.textContent = res.restart_required
+      ? '✔ Сохранено. Перезапусти бота чтобы применить аккаунт'
+      : '✔ Сохранено';
+    hint.style.color = 'var(--accent-green)';
+    appendLog('INFO', 'Настройки бота сохранены');
+    setTimeout(() => {
+      hint.textContent = '';
+      if (!res.restart_required) closeBotSettings();
+    }, 3000);
+  } else {
+    hint.textContent = '✗ Ошибка сохранения';
+    hint.style.color = 'var(--red)';
+  }
+}
+</script>
+
+<!-- МОДАЛ: НАСТРОЙКИ БОТА -->
+<div class="modal-overlay" id="bot-settings-modal" onclick="if(event.target===this)closeBotSettings()">
+  <div class="modal-box">
+    <div class="modal-title">⚙ Настройки бота</div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">Аккаунт</div>
+      <div class="modal-field">
+        <label>API Key</label>
+        <input id="cfg-api-key" type="text" placeholder="Вставь API key">
+      </div>
+      <div class="modal-field">
+        <label>Адрес аккаунта (0x...)</label>
+        <input id="cfg-address" type="text" placeholder="0x...">
+      </div>
+      <div class="modal-field">
+        <label>Privy Wallet Private Key</label>
+        <input id="cfg-privkey" type="password" placeholder="Вставь приватный ключ">
+      </div>
+      <div class="modal-field">
+        <label>Прокси (опционально)</label>
+        <input id="cfg-proxy" type="text" placeholder="host:port или user:pass@host:port">
+      </div>
+      <div class="modal-note">⚠ Изменения аккаунта вступят в силу после перезапуска бота</div>
+      <div class="modal-note">🔒 Ключ хранится в bot_config.json на сервере в открытом виде — убедись что доступ к серверу защищён</div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">Безопасность</div>
+      <div class="modal-field">
+        <label>Пароль для UI (оставь пустым — без защиты)</label>
+        <input id="cfg-ui-password" type="password" placeholder="Придумай пароль">
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">Telegram уведомления</div>
+      <div class="modal-field">
+        <label>Bot Token</label>
+        <input id="cfg-tg-token" type="text" placeholder="1234567890:AAF...">
+      </div>
+      <div class="modal-field">
+        <label>Chat ID</label>
+        <input id="cfg-tg-chat" type="text" placeholder="-1001234567890">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-modal-save" onclick="saveBotSettings()">Сохранить</button>
+      <button class="btn-modal-cancel" onclick="closeBotSettings()">Отмена</button>
+      <span class="modal-hint" id="cfg-hint"></span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+# Формат: api_key,0xaddress,privy_private_key,proxy(необязательно)
+# Пример без прокси:
+your_api_key,0xYourAddress,0xYourPrivyPrivateKey
+# Пример с прокси:
+your_api_key,0xYourAddress,0xYourPrivyPrivateKey,http://user:pass@host:port

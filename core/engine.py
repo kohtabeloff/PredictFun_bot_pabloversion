@@ -1,0 +1,437 @@
+"""
+BotEngine: главный координатор.
+Управляет воркерами, WebSocket, инспектором, execution guard.
+"""
+from __future__ import annotations
+
+import asyncio
+import time
+from typing import Callable
+
+from api.client import APIClient
+from api.websocket import PredictWebSocket
+from core.calculator import Calculator
+from core.market_worker import MarketWorker
+from core.order_manager import OrderManager
+from models import AccountInfo, BotState, MarketSettings, MarketState
+from storage.settings_store import SettingsStore
+from utils.logger import BotLogger, EventBus
+
+
+class BotEngine:
+    def __init__(
+        self,
+        account: AccountInfo,
+        settings_store: SettingsStore,
+        event_bus: EventBus,
+        logger: BotLogger,
+    ):
+        self.account = account
+        self.settings_store = settings_store
+        self.event_bus = event_bus
+        self.logger = logger
+
+        self.api: APIClient | None = None
+        self.ws: PredictWebSocket | None = None
+        self.order_manager: OrderManager | None = None
+
+        self._workers: dict[str, MarketWorker] = {}
+        self._market_info_cache: dict[str, dict] = {}
+        self._market_states: dict[str, MarketState] = {}
+
+        self._inspector_task: asyncio.Task | None = None
+        self._execution_guard_task: asyncio.Task | None = None
+        self._balance_task: asyncio.Task | None = None
+
+        self.running = False
+        self._state = "stopped"  # stopped | starting | running | stopping
+        self._state_lock = asyncio.Lock()
+        self.balance: float | None = None
+        self.ws_connected = False
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Старт / стоп
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def start(self):
+        async with self._state_lock:
+            if self._state != "stopped":
+                return
+            self._state = "starting"
+            self._broadcast_state()
+
+        try:
+            self.logger.log("Запуск бота...")
+
+            # API клиент
+            from api.auth import get_auth_jwt
+            jwt = await get_auth_jwt(
+                self.account.api_key,
+                self.account.predict_account_address,
+                self.account.privy_wallet_private_key,
+                proxy=self.account.proxy,
+                log_func=self.logger,
+            )
+
+            self.api = APIClient(
+                api_key=self.account.api_key,
+                jwt_token=jwt,
+                predict_account_address=self.account.predict_account_address,
+                privy_wallet_private_key=self.account.privy_wallet_private_key,
+                proxy=self.account.proxy,
+                log_func=self.logger,
+            )
+            await self.api.start()
+
+            # Order manager
+            self.order_manager = OrderManager(
+                api_client=self.api,
+                market_info_cache=self._market_info_cache,
+                log_func=self.logger,
+            )
+
+            # WebSocket
+            self.ws = PredictWebSocket(
+                api_key=self.account.api_key,
+                log_func=self.logger,
+            )
+            self.ws.start()
+
+            # Фоновые задачи
+            self._inspector_task = asyncio.create_task(self._inspector_loop())
+            self._execution_guard_task = asyncio.create_task(self._execution_guard_loop())
+            self._balance_task = asyncio.create_task(self._balance_loop())
+
+            self.running = True
+            self._state = "running"
+            self.logger.log("✓ Бот запущен")
+            self._broadcast_state()
+        except Exception as e:
+            self.logger.log(f"✗ Ошибка запуска: {e}")
+            # Cleanup частично поднятых ресурсов
+            for task in [self._inspector_task, self._execution_guard_task, self._balance_task]:
+                if task and not task.done():
+                    task.cancel()
+            self._inspector_task = self._execution_guard_task = self._balance_task = None
+            if self.ws:
+                self.ws.stop()
+                self.ws = None
+            if self.api:
+                await self.api.close()
+                self.api = None
+            self.order_manager = None
+            self._state = "stopped"
+            self.running = False
+            self._broadcast_state()
+            raise
+
+    async def stop(self):
+        async with self._state_lock:
+            if self._state != "running":
+                return
+            self._state = "stopping"
+
+        self.logger.log("Остановка бота...")
+        self.running = False
+
+        # Останавливаем воркеры
+        for worker in list(self._workers.values()):
+            await worker.stop()
+        self._workers.clear()
+
+        # Отменяем фоновые задачи
+        for task in [self._inspector_task, self._execution_guard_task, self._balance_task]:
+            if task and not task.done():
+                task.cancel()
+
+        if self.ws:
+            self.ws.stop()
+
+        if self.api:
+            await self.api.close()
+
+        self._state = "stopped"
+        self.logger.log("Бот остановлен")
+        self._broadcast_state()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Управление маркетами
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def add_markets(self, market_ids: list[str]) -> dict[str, str]:
+        """
+        Загружает маркеты по ID и запускает воркеры.
+        Возвращает {market_id: "ok" | "error: ..."}
+        """
+        results = {}
+        for mid in market_ids:
+            mid = str(mid).strip()
+            if mid in self._workers:
+                results[mid] = "already_exists"
+                continue
+            try:
+                info = await self._load_market_info(mid)
+                if info is None:
+                    results[mid] = "error: не удалось загрузить маркет"
+                    continue
+                if info.get("status") != "REGISTERED":
+                    results[mid] = f"error: статус {info.get('status')} (нужен REGISTERED)"
+                    continue
+                self._market_info_cache[mid] = info
+                await self._start_worker(mid)
+                results[mid] = "ok"
+            except Exception as e:
+                results[mid] = f"error: {e}"
+        return results
+
+    async def remove_market(self, market_id: str):
+        """Останавливает воркер и отменяет все ордера маркета."""
+        worker = self._workers.pop(market_id, None)
+        if worker:
+            # Отменяем ордера
+            ids = worker.get_active_order_ids()
+            if ids and self.order_manager:
+                await self.order_manager.cancel_orders(ids, market_id=market_id)
+            await worker.stop()
+            if self.ws:
+                self.ws.unsubscribe(market_id)
+        self._market_states.pop(market_id, None)
+        self.settings_store.remove(market_id)
+        self._broadcast_state()
+
+    async def cancel_all(self):
+        """Отменяет все ордера всех маркетов."""
+        for worker in self._workers.values():
+            ids = worker.get_active_order_ids()
+            if ids and self.order_manager:
+                await self.order_manager.cancel_orders(ids, market_id=worker.market_id)
+            worker.order_yes = None
+            worker.order_no = None
+        self._broadcast_state()
+
+    def update_market_settings(self, market_id: str, **kwargs) -> MarketSettings:
+        settings = self.settings_store.update(market_id, **kwargs)
+        worker = self._workers.get(market_id)
+        if worker:
+            worker.update_settings(settings)
+        return settings
+
+    def get_state(self) -> BotState:
+        markets = {}
+        for mid, worker in self._workers.items():
+            info = self._market_info_cache.get(mid, {})
+            state = MarketState(
+                market_id=mid,
+                title=info.get("title", mid),
+                status=info.get("status", ""),
+                image_url=info.get("imageUrl", ""),
+                settings=worker.settings,
+                order_yes=worker.order_yes,
+                order_no=worker.order_no,
+                last_calculation=worker.last_calc,
+                ws_connected=self.ws.connected if self.ws else False,
+                last_update=worker.last_update,
+            )
+            markets[mid] = state
+
+        total_orders = sum(
+            (1 if w.order_yes else 0) + (1 if w.order_no else 0)
+            for w in self._workers.values()
+        )
+        return BotState(
+            running=self.running,
+            ws_connected=self.ws.connected if self.ws else False,
+            account_address=self.account.predict_account_address,
+            balance_usdt=self.balance,
+            markets=markets,
+            total_open_orders=total_orders,
+        )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Приватные методы
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def _load_market_info(self, market_id: str) -> dict | None:
+        if not self.api:
+            return None
+        return await self.api.get_market(market_id)
+
+    async def _start_worker(self, market_id: str):
+        settings = self.settings_store.get(market_id)
+        info = self._market_info_cache[market_id]
+
+        worker = MarketWorker(
+            market_id=market_id,
+            market_info=info,
+            settings=settings,
+            order_manager=self.order_manager,
+            on_state_update=self._on_market_state,
+            log_func=self.logger,
+        )
+        self._workers[market_id] = worker
+
+        if self.ws:
+            self.ws.subscribe(market_id, worker.queue)
+
+        worker.start()
+        self.logger.log(f"[{market_id}] Запущен: {info.get('title', market_id)[:50]}")
+
+    def _on_market_state(self, state: MarketState):
+        """Вызывается воркером при каждом обновлении."""
+        self._market_states[state.market_id] = state
+        self.event_bus.emit({
+            "type": "market_update",
+            "market_id": state.market_id,
+            "data": state.model_dump(),
+        })
+
+    def _broadcast_state(self):
+        self.event_bus.emit({
+            "type": "bot_state",
+            "data": self.get_state().model_dump(),
+        })
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Фоновые задачи
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def _inspector_loop(self):
+        """Каждые 10 сек: ищет orphan ордера и отменяет их."""
+        from config import INSPECTOR_INTERVAL_SEC
+        while self.running:
+            await asyncio.sleep(INSPECTOR_INTERVAL_SEC)
+            try:
+                if not self.api:
+                    continue
+                open_orders = await self.api.get_open_orders()
+
+                # Собираем известные ID
+                known_ids: set[str] = set()
+                managed_markets: set[str] = set(self._workers.keys())
+                for worker in self._workers.values():
+                    for oid in worker.get_active_order_ids():
+                        known_ids.add(oid)
+
+                # Ищем orphans
+                orphans = []
+                for o in open_orders:
+                    mid = str(o.get("marketId", ""))
+                    if mid not in managed_markets:
+                        continue
+                    oid = str(o.get("id") or o.get("orderId") or "")
+                    if oid and oid not in known_ids:
+                        orphans.append(oid)
+
+                if orphans:
+                    self.logger.log(f"[Inspector] Orphan ордеров: {len(orphans)}, отменяем")
+                    await self.order_manager.cancel_orders(orphans)
+
+                # Обновляем счётчик для UI
+                total = len(open_orders)
+                self.event_bus.emit({"type": "orders_count", "count": total})
+
+            except Exception as e:
+                self.logger.log(f"[Inspector] ✗ {e}")
+
+    async def _execution_guard_loop(self):
+        """Каждые 3 сек: проверяет не исполнились ли наши ордера."""
+        from config import EXECUTION_GUARD_INTERVAL_SEC
+        while self.running:
+            await asyncio.sleep(EXECUTION_GUARD_INTERVAL_SEC)
+            try:
+                if not self.api:
+                    continue
+                open_orders = await self.api.get_open_orders()
+                open_ids = {str(o.get("id") or o.get("orderId")) for o in open_orders}
+
+                for worker in list(self._workers.values()):
+                    for side in ("yes", "no"):
+                        order = worker.order_yes if side == "yes" else worker.order_no
+                        if order is None:
+                            continue
+                        # Ордер исчез из open — проверим статус
+                        if order.order_id not in open_ids:
+                            detail = await self.api.get_order(order.order_id)
+                            if detail and detail.get("status") == "FILLED":
+                                self.logger.log(
+                                    f"⚠ [{worker.market_id}] {side.upper()} ИСПОЛНИЛАСЬ! "
+                                    f"Цена {order.price*100:.1f}¢ × {order.shares:.1f} шт"
+                                )
+                                # Сбрасываем запись об ордере
+                                if side == "yes":
+                                    worker.order_yes = None
+                                else:
+                                    worker.order_no = None
+
+                                # Авто-продажа — передаём последнюю известную цену
+                                mid_price = None
+                                if worker.last_calc:
+                                    mid_price = (
+                                        worker.last_calc.mid_price_yes
+                                        if side == "yes"
+                                        else worker.last_calc.mid_price_no
+                                    )
+                                await self.order_manager.sell_market(
+                                    worker.market_id, side, order.shares, mid_price=mid_price
+                                )
+
+                                # Telegram уведомление
+                                await self._send_telegram(
+                                    f"⚠ Лимитка исполнилась!\n"
+                                    f"Маркет: {worker.market_info.get('title', worker.market_id)}\n"
+                                    f"Сторона: {side.upper()}\n"
+                                    f"Цена: {order.price*100:.1f}¢ × {order.shares:.1f} шт\n"
+                                    f"Сумма: ${order.price * order.shares:.2f}"
+                                )
+
+                                self.event_bus.emit({
+                                    "type": "execution_alert",
+                                    "market_id": worker.market_id,
+                                    "side": side,
+                                    "price": order.price,
+                                    "shares": order.shares,
+                                })
+                            elif detail is not None and detail.get("status") == "CANCELLED":
+                                # Подтверждённая отмена — обновляем состояние
+                                if side == "yes":
+                                    worker.order_yes = None
+                                else:
+                                    worker.order_no = None
+                            elif detail is None:
+                                # Ошибка API — НЕ сбрасываем, проверим в след. цикле
+                                self.logger.log(
+                                    f"[ExecutionGuard] [{worker.market_id}] {side.upper()} "
+                                    f"не удалось проверить статус ордера, пропускаем"
+                                )
+
+            except Exception as e:
+                self.logger.log(f"[ExecutionGuard] ✗ {e}")
+
+    async def _balance_loop(self):
+        """Каждые 5 мин обновляет баланс."""
+        while self.running:
+            try:
+                if self.api:
+                    balance = await self.api.get_balance()
+                    if balance is not None:
+                        self.balance = balance
+                        self.event_bus.emit({"type": "balance", "balance": balance})
+            except Exception:
+                pass
+            await asyncio.sleep(300)
+
+    async def _send_telegram(self, message: str):
+        from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+        import aiohttp
+        token, chat_id = TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+        if not token or not chat_id:
+            return
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.post(
+                    f"https://api.telegram.org/bot{token}/sendMessage",
+                    json={"chat_id": chat_id, "text": message, "parse_mode": "HTML"},
+                    timeout=aiohttp.ClientTimeout(total=10),
+                )
+        except Exception:
+            pass

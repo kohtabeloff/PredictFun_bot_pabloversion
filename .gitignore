@@ -1,0 +1,31 @@
+# Virtual environment
+.venv/
+
+# Personal data
+accounts.txt
+bot_config.json
+market_settings.json
+
+# Logs
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+*.env
