@@ -200,13 +200,22 @@ class BotEngine:
         self._broadcast_state()
 
     async def cancel_all(self):
-        """Отменяет все ордера всех маркетов."""
+        """Останавливает все воркеры и отменяет все ордера."""
+        # Сначала отключаем все воркеры чтобы не выставляли новые ордера
+        for worker in self._workers.values():
+            worker.settings = worker.settings.model_copy(update={"enabled": False})
+            self.settings_store.update(worker.market_id, enabled=False)
+
+        # Теперь отменяем существующие ордера
         for worker in self._workers.values():
             ids = worker.get_active_order_ids()
             if ids and self.order_manager:
-                await self.order_manager.cancel_orders(ids, market_id=worker.market_id)
+                ok = await self.order_manager.cancel_orders(ids, market_id=worker.market_id)
+                if not ok:
+                    self.logger.log(f"[{worker.market_id}] ✗ Не удалось отменить ордера")
             worker.order_yes = None
             worker.order_no = None
+        self.logger.log(f"✓ Все ордера отменены, все маркеты остановлены")
         self._broadcast_state()
 
     def update_market_settings(self, market_id: str, **kwargs) -> MarketSettings:
@@ -222,7 +231,7 @@ class BotEngine:
             info = self._market_info_cache.get(mid, {})
             state = MarketState(
                 market_id=mid,
-                title=info.get("title", mid),
+                title=info.get("question") or info.get("title", mid),
                 status=info.get("status", ""),
                 image_url=info.get("imageUrl", ""),
                 settings=worker.settings,
@@ -274,7 +283,7 @@ class BotEngine:
             self.ws.subscribe(market_id, worker.queue)
 
         worker.start()
-        self.logger.log(f"[{market_id}] Запущен: {info.get('title', market_id)[:50]}")
+        self.logger.log(f"[{market_id}] Запущен: {(info.get('question') or info.get('title', market_id))[:50]}")
 
     def _on_market_state(self, state: MarketState):
         """Вызывается воркером при каждом обновлении."""

@@ -189,6 +189,7 @@
       border-radius: 10px;
       overflow: hidden;
       transition: border-color .2s;
+      flex-shrink: 0;
     }
     .card:hover { border-color: var(--card-border2); }
     @keyframes flashAlert {
@@ -700,6 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchInitialState();
   connectWebSocket();
   setInterval(updateTimestamps, 5000);
+  setInterval(fetchInitialState, 8000); // fallback: подтягиваем состояние каждые 8 сек
 });
 
 // ─── REST API ─────────────────────────────────────────────────────────────────
@@ -850,7 +852,7 @@ async function connectWebSocket() {
   };
   ws.onerror = () => setWsDot(false);
   ws.onmessage = evt => {
-    try { handleWsMessage(JSON.parse(evt.data)); } catch (e) {}
+    try { handleWsMessage(JSON.parse(evt.data)); } catch (e) { console.error('WS parse error:', e, evt.data?.slice?.(0,200)); }
   };
 }
 
@@ -923,8 +925,20 @@ function updateBalance(val) {
 
 function updateOrdersCount(n) {
   state.orders_count = n || 0;
-  document.getElementById('orders-badge').textContent =
-    `${state.orders_count} ордер${ordersLabel(state.orders_count)}`;
+  // Считаем ожидаемое число ордеров по настройкам включённых маркетов
+  let expected = 0;
+  Object.values(state.markets).forEach(m => {
+    if (m.settings && m.settings.enabled) {
+      const side = m.settings.side || 'both';
+      expected += side === 'both' ? 2 : 1;
+    }
+  });
+  const el = document.getElementById('orders-badge');
+  if (expected > 0) {
+    el.textContent = `${state.orders_count} / ${expected} ордер${ordersLabel(expected)}`;
+  } else {
+    el.textContent = `${state.orders_count} ордер${ordersLabel(state.orders_count)}`;
+  }
 }
 
 function ordersLabel(n) {
@@ -935,6 +949,7 @@ function ordersLabel(n) {
 
 // ─── MARKET CARDS ─────────────────────────────────────────────────────────────
 function renderOrUpdateCard(id, ms) {
+  try {
   let card = document.getElementById(`card-${id}`);
   if (card) {
     updateCard(card, id, ms);
@@ -946,6 +961,7 @@ function renderOrUpdateCard(id, ms) {
     document.getElementById('markets-panel').appendChild(card);
     card.innerHTML = buildCardHTML(id, ms);
   }
+  } catch(e) { appendLog('ERROR', `Ошибка рендера карточки ${id}: ${e.message}`); console.error('Card render error', id, e); }
 
   if (!updateTimers[id]) {
     updateTimers[id] = setInterval(() => {
