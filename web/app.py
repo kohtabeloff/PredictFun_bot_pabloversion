@@ -186,6 +186,15 @@ async def cancel_all():
     return {"ok": True}
 
 
+@app.delete("/api/markets")
+async def remove_all_markets():
+    """Удаляет все маркеты: отменяет ордера, останавливает воркеры, чистит настройки."""
+    engine = app.state.engine
+    for mid in list(engine._workers.keys()):
+        await engine.remove_market(mid)
+    return {"ok": True}
+
+
 @app.post("/api/bot/start")
 async def bot_start():
     engine = app.state.engine

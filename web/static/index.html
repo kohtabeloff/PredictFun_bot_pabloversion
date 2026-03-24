@@ -555,6 +555,7 @@
     <button class="btn-stop"  id="btn-stop"  onclick="botStop()"  disabled>■ СТОП</button>
     <button class="btn-start-all" onclick="enableAll(true)">▶ Запустить все</button>
     <button class="btn-cancel" onclick="cancelAll()">✕ Отменить все ордера</button>
+    <button class="btn-delete" style="padding:6px 14px;font-size:12px" onclick="removeAllMarkets()">🗑 Удалить все маркеты</button>
     <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="openBotSettings()">⚙ Настройки</button>
   </div>
 </header>
@@ -742,6 +743,19 @@ async function botStop() {
 async function cancelAll() {
   if (!confirm('Отменить все открытые ордера?')) return;
   await apiFetch('POST', '/api/cancel-all');
+}
+
+async function removeAllMarkets() {
+  const count = Object.keys(state.markets).length;
+  if (!count) { appendLog('WARN', 'Нет маркетов для удаления'); return; }
+  if (!confirm(`Удалить все ${count} маркетов? Ордера будут отменены.`)) return;
+  const res = await apiFetch('DELETE', '/api/markets');
+  if (res) {
+    state.markets = {};
+    document.querySelectorAll('.card').forEach(c => c.remove());
+    checkEmpty();
+    appendLog('INFO', `Удалено ${count} маркетов`);
+  }
 }
 
 async function addMarkets() {

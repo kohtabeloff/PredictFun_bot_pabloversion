@@ -106,6 +106,7 @@ class BotEngine:
             self._state = "running"
             self.logger.log("✓ Бот запущен")
             self._broadcast_state()
+            await self._send_telegram("✅ PredictFun Bot запущен")
         except Exception as e:
             self.logger.log(f"✗ Ошибка запуска: {e}")
             # Cleanup частично поднятых ресурсов
