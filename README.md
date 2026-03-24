@@ -29,23 +29,6 @@ pip install predict_sdk  # или по инструкции от predict.fun
 
 ---
 
-## Настройка аккаунта
-
-Скопируй файл примера и заполни своими данными:
-
-```bash
-cp accounts.txt.example accounts.txt
-```
-
-Формат `accounts.txt`:
-```
-api_key,0xАдрес,приватный_ключ_privy
-# или с прокси:
-api_key,0xАдрес,приватный_ключ_privy,http://user:pass@host:port
-```
-
----
-
 ## Запуск
 
 ```bash
@@ -59,14 +42,27 @@ python main.py
 
 ---
 
+## Настройка аккаунта
+
+Все данные вводятся через UI — нажми шестерёнку ⚙ в верхнем правом углу:
+
+- **API Key** — ключ от predict.fun
+- **Account Address** — адрес predict-аккаунта (0x...)
+- **Private Key** — приватный ключ Privy-кошелька
+- **Прокси** — опционально, формат `http://user:pass@host:port`
+- **Telegram Bot Token / Chat ID** — опционально, для уведомлений
+
+---
+
 ## Использование
 
-1. **Настройки** (шестерёнка в хедере) — введи пароль для UI, Telegram токен (опционально)
+1. **⚙ Настройки** — введи данные аккаунта (API ключ, адрес, приватный ключ)
 2. **СТАРТ** — запускает движок бота (подключается к API и WebSocket)
 3. **Добавить маркеты** — вставь ID маркетов через запятую или с новой строки
-4. **Общие настройки** — установи параметры сразу для всех маркетов
-5. **▶ Запустить** на карточке маркета — бот начинает выставлять ордера
-6. **Отменить все** — убирает все ордера из стакана
+4. **Общие настройки** — установи параметры сразу для всех маркетов (размер ордера, спред и т.д.)
+5. **Запустить все** — включает выставление ордеров на всех маркетах
+6. **Отменить все ордера** — убирает все ордера из стакана
+7. **Удалить все маркеты** — полностью очищает список маркетов
 
 ---
 
@@ -78,7 +74,7 @@ python main.py
 sudo nano /etc/systemd/system/predictfun-bot.service
 ```
 
-Содержимое:
+Содержимое (замени пути под своего пользователя):
 
 ```ini
 [Unit]
@@ -88,13 +84,17 @@ After=network.target
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu/PredictFun_bot_pabloversion
-ExecStart=/home/ubuntu/PredictFun_bot_pabloversion/.venv/bin/python main.py
+ExecStart=/home/ubuntu/PredictFun_bot_pabloversion/.venv/bin/python main.py --autostart
 Restart=always
 RestartSec=5
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+> Флаг `--autostart` обязателен — без него бот поднимется после перезагрузки, но не запустится автоматически.
 
 Запусти:
 
@@ -102,6 +102,12 @@ WantedBy=multi-user.target
 sudo systemctl enable predictfun-bot
 sudo systemctl start predictfun-bot
 sudo systemctl status predictfun-bot
+```
+
+Просмотр логов:
+
+```bash
+journalctl -u predictfun-bot -f
 ```
 
 ---
