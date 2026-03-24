@@ -70,9 +70,49 @@ async def main():
     server = uvicorn.Server(config)
 
     logger.log(f"Web UI: http://localhost:{WEB_PORT}")
-    logger.log("Откройте браузер и нажмите СТАРТ")
 
-    await asyncio.gather(server.serve(), return_exceptions=True)
+    is_autostart = "--autostart" in sys.argv
+
+    async def autostart():
+        """Автозапуск: стартует движок и загружает сохранённые маркеты."""
+        await asyncio.sleep(2)  # ждём пока сервер поднимется
+        try:
+            # Обновляем аккаунт из config_store (мог быть введён через UI)
+            cfg_data = config_store.get()
+            addr = cfg_data.get("predict_account_address", "")
+            key = cfg_data.get("privy_wallet_private_key", "")
+            if addr and addr != "0x0000000000000000000000000000000000000000" and key:
+                from models import AccountInfo as AI
+                engine.account = AI(
+                    api_key=cfg_data.get("api_key", ""),
+                    predict_account_address=addr,
+                    privy_wallet_private_key=key,
+                    proxy=cfg_data.get("proxy") or None,
+                )
+
+            await engine.start()
+
+            # Загружаем сохранённые маркеты
+            saved = settings_store.all()
+            if saved:
+                ids = list(saved.keys())
+                logger.log(f"Автозапуск: загрузка {len(ids)} маркетов...")
+                results = await engine.add_markets(ids)
+                ok = sum(1 for v in results.values() if v == "ok" or v == "already_exists")
+                err = sum(1 for v in results.values() if "error" in str(v))
+                enabled = sum(1 for mid in saved if saved[mid].enabled)
+                logger.log(f"Автозапуск: {ok} маркетов загружено, {err} ошибок, {enabled} активных")
+            else:
+                logger.log("Автозапуск: нет сохранённых маркетов")
+        except Exception as e:
+            logger.log(f"✗ Автозапуск: {e}")
+
+    if is_autostart:
+        logger.log("Режим автозапуска — бот стартует автоматически")
+        await asyncio.gather(server.serve(), autostart(), return_exceptions=True)
+    else:
+        logger.log("Откройте браузер и нажмите СТАРТ")
+        await asyncio.gather(server.serve(), return_exceptions=True)
 
 
 async def demo():
