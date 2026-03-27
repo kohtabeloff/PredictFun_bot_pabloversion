@@ -162,7 +162,7 @@ class MarketWorker:
                     )
                     if ok:
                         self.order_yes = None
-                elif self._should_reposition("yes", target_yes) or self._liquidity_dropped("yes", orderbook):
+                elif self._should_reposition("yes", target_yes) or (not is_volatile and self._liquidity_dropped("yes", orderbook)):
                     old_id = self.order_yes.order_id
                     self._pending_cancel_ids.add(old_id)
                     self.order_yes = None
@@ -204,7 +204,7 @@ class MarketWorker:
                     )
                     if ok:
                         self.order_no = None
-                elif self._should_reposition("no", target_no) or self._liquidity_dropped("no", orderbook):
+                elif self._should_reposition("no", target_no) or (not is_volatile and self._liquidity_dropped("no", orderbook)):
                     old_id = self.order_no.order_id
                     self._pending_cancel_ids.add(old_id)
                     self.order_no = None
