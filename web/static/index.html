@@ -593,6 +593,14 @@
 
       <div class="global-field">
         <div class="global-field-header">
+          <input type="checkbox" id="gb-cb-minord" onchange="gbToggle('minord')">
+          <label class="global-label" id="gb-lbl-minord" for="gb-cb-minord">Мин. ордеров перед заявкой (0=выкл)</label>
+        </div>
+        <input class="global-input" id="gb-minord" type="number" min="0" value="0" placeholder="0" disabled>
+      </div>
+
+      <div class="global-field">
+        <div class="global-field-header">
           <input type="checkbox" id="gb-cb-spread" onchange="gbToggle('spread')">
           <label class="global-label" id="gb-lbl-spread" for="gb-cb-spread">Макс. авто-спред, %</label>
         </div>
@@ -811,6 +819,7 @@ async function saveSettings(marketId) {
     side:                       strVal(`s-side-${marketId}`),
     position_size_usdt:         floatVal(`s-usdt-${marketId}`),
     target_liquidity:           floatVal(`s-liq-${marketId}`),
+    min_orders_before:          intVal(`s-minord-${marketId}`),
     max_auto_spread:            floatVal(`s-spread-${marketId}`),
     min_spread:                 floatVal(`s-minspr-${marketId}`),
     liquidity_mode:             strVal(`s-mode-${marketId}`),
@@ -1137,6 +1146,11 @@ function buildCardHTML(id, m) {
             value="${s.target_liquidity ?? 1000}" placeholder="1000">
         </div>
         <div class="settings-group">
+          <label class="settings-label">Мин. ордеров перед заявкой (0=выкл)</label>
+          <input class="settings-input" id="s-minord-${escA(id)}" type="number" min="0"
+            value="${s.min_orders_before ?? 0}" placeholder="0">
+        </div>
+        <div class="settings-group">
           <label class="settings-label">Макс. авто-спред, %</label>
           <input class="settings-input" id="s-spread-${escA(id)}" type="number" min="0" step="0.1"
             value="${s.max_auto_spread ?? 6}" placeholder="6">
@@ -1278,6 +1292,7 @@ async function applyGlobalSettings() {
   const body = {};
   if (checked('usdt'))    body.position_size_usdt         = flt('gb-usdt');
   if (checked('liq'))     body.target_liquidity           = flt('gb-liq');
+  if (checked('minord'))  body.min_orders_before          = int('gb-minord');
   if (checked('spread'))  body.max_auto_spread            = flt('gb-spread');
   if (checked('minspr'))  body.min_spread                 = flt('gb-minspr');
   if (checked('mode'))    body.liquidity_mode             = sel('gb-mode');

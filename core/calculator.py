@@ -52,19 +52,18 @@ class Calculator:
         target_depth: float,
         mode: str = "bid",  # "bid" | "ask"
         decimal_precision: int = 3,
+        min_orders: int = 0,
     ) -> float:
         """
-        Находит цену, при которой кумулятивная ликвидность >= target_depth.
+        Находит цену, при которой кумулятивная ликвидность >= target_depth
+        И количество уровней в стакане перед заявкой >= min_orders.
         Ставим ордер на один тик ниже этой цены.
-
-        mode="bid": считаем ликвидность как price*shares (bid-side)
-        mode="ask": считаем ликвидность как (1-price)*shares (ask-side) — для YES;
-                    для NO — yes_price * shares
         """
         bids = orderbook.get("bids", [])
         asks = orderbook.get("asks", [])
         tick = 1 / (10 ** decimal_precision)
         acc = 0.0
+        levels_seen = 0
 
         try:
             if outcome == "yes":
@@ -74,7 +73,8 @@ class Calculator:
                         acc += price * shares
                     else:
                         acc += (1.0 - price) * shares
-                    if acc >= target_depth:
+                    levels_seen += 1
+                    if acc >= target_depth and levels_seen >= min_orders:
                         return round(price - tick, decimal_precision)
                 if levels:
                     return round(levels[-1][0] - tick, decimal_precision)
@@ -86,7 +86,8 @@ class Calculator:
                         acc += no_price * shares
                     else:
                         acc += yes_price * shares
-                    if acc >= target_depth:
+                    levels_seen += 1
+                    if acc >= target_depth and levels_seen >= min_orders:
                         return round(no_price - tick, decimal_precision)
                 if levels:
                     return round(levels[-1][0] - tick, decimal_precision)
@@ -150,9 +151,10 @@ class Calculator:
         target = settings.target_liquidity or 1000.0
         max_spread_frac = (settings.max_auto_spread or 6.0) / 100.0
 
-        # Находим цену по кумулятивной ликвидности
-        price_yes = cls.find_price_at_depth(orderbook, "yes", target, mode, decimal_precision)
-        price_no = cls.find_price_at_depth(orderbook, "no", target, mode, decimal_precision)
+        # Находим цену по кумулятивной ликвидности (и числу уровней, если задано)
+        min_orders = settings.min_orders_before or 0
+        price_yes = cls.find_price_at_depth(orderbook, "yes", target, mode, decimal_precision, min_orders)
+        price_no = cls.find_price_at_depth(orderbook, "no", target, mode, decimal_precision, min_orders)
 
         # Не дальше чем max_auto_spread от mid
         price_yes = max(price_yes, mid_yes - max_spread_frac)

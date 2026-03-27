@@ -29,6 +29,7 @@ class MarketSettings(BaseModel):
     position_size_shares: float | None = None
     min_spread: float = DEFAULT_MIN_SPREAD
     target_liquidity: float = DEFAULT_TARGET_LIQUIDITY
+    min_orders_before: int = 0
     max_auto_spread: float = DEFAULT_MAX_AUTO_SPREAD
     liquidity_mode: Literal["bid", "ask"] = DEFAULT_LIQUIDITY_MODE
     volatile_reposition_limit: int = DEFAULT_VOLATILE_REPOSITION_LIMIT
