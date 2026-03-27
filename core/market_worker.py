@@ -76,6 +76,17 @@ class MarketWorker:
             return False
         return abs(order.price - new_price) > REPOSITION_THRESHOLD
 
+    def _liquidity_dropped(self, side: str, orderbook: dict) -> bool:
+        """Упала ли ликвидность перед нашим ордером ниже target_liquidity?"""
+        order = self.order_yes if side == "yes" else self.order_no
+        if order is None:
+            return False
+        target = self.settings.target_liquidity or 1000.0
+        dp = self.market_info.get("decimalPrecision", 3)
+        tick = 1 / (10 ** dp)
+        current_liq = Calculator.cumulative_depth(orderbook, side, order.price + tick)
+        return current_liq < target
+
     def _is_volatile(self) -> bool:
         """Слишком много переставлений за короткое время?"""
         limit = self.settings.volatile_reposition_limit
@@ -151,7 +162,7 @@ class MarketWorker:
                     )
                     if ok:
                         self.order_yes = None
-                elif self._should_reposition("yes", target_yes):
+                elif self._should_reposition("yes", target_yes) or self._liquidity_dropped("yes", orderbook):
                     old_id = self.order_yes.order_id
                     self._pending_cancel_ids.add(old_id)
                     self.order_yes = None
@@ -193,7 +204,7 @@ class MarketWorker:
                     )
                     if ok:
                         self.order_no = None
-                elif self._should_reposition("no", target_no):
+                elif self._should_reposition("no", target_no) or self._liquidity_dropped("no", orderbook):
                     old_id = self.order_no.order_id
                     self._pending_cancel_ids.add(old_id)
                     self.order_no = None
