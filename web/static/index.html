@@ -711,6 +711,18 @@ document.addEventListener('DOMContentLoaded', () => {
   connectWebSocket();
   setInterval(updateTimestamps, 5000);
   setInterval(fetchInitialState, 8000); // fallback: подтягиваем состояние каждые 8 сек
+
+  // Восстанавливаем последние значения глобальных настроек
+  try {
+    const saved = JSON.parse(localStorage.getItem('globalSettingsVals') || 'null');
+    if (saved) {
+      const set = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined) el.value = val; };
+      set('gb-usdt', saved.usdt); set('gb-liq', saved.liq); set('gb-minord', saved.minord);
+      set('gb-spread', saved.spread); set('gb-minspr', saved.minspr);
+      set('gb-mode', saved.mode); set('gb-side', saved.side);
+      set('gb-vlimit', saved.vlimit); set('gb-vwindow', saved.vwindow); set('gb-vcool', saved.vcool);
+    }
+  } catch(e) {}
 });
 
 // ─── REST API ─────────────────────────────────────────────────────────────────
@@ -908,6 +920,14 @@ function applyBotState(data) {
     document.getElementById('ws-addr').textContent = a.slice(0,8)+'…'+a.slice(-4);
   }
   if (data.markets && typeof data.markets === 'object') {
+    // Удаляем карточки маркетов, которых больше нет на сервере
+    const serverIds = new Set(Object.keys(data.markets));
+    Object.keys(state.markets).forEach(id => {
+      if (!serverIds.has(id)) {
+        delete state.markets[id];
+        removeCard(id);
+      }
+    });
     Object.entries(data.markets).forEach(([id, ms]) => {
       state.markets[id] = ms;
       renderOrUpdateCard(id, ms);
@@ -1325,6 +1345,20 @@ async function applyGlobalSettings() {
 
   const res = await apiFetch('PUT', '/api/markets/settings/bulk', body);
   if (res) {
+    // Сохраняем значения всех полей в localStorage
+    const allVals = {
+      usdt: document.getElementById('gb-usdt')?.value,
+      liq: document.getElementById('gb-liq')?.value,
+      minord: document.getElementById('gb-minord')?.value,
+      spread: document.getElementById('gb-spread')?.value,
+      minspr: document.getElementById('gb-minspr')?.value,
+      mode: document.getElementById('gb-mode')?.value,
+      side: document.getElementById('gb-side')?.value,
+      vlimit: document.getElementById('gb-vlimit')?.value,
+      vwindow: document.getElementById('gb-vwindow')?.value,
+      vcool: document.getElementById('gb-vcool')?.value,
+    };
+    localStorage.setItem('globalSettingsVals', JSON.stringify(allVals));
     const n = res.updated || 0;
     hint.textContent = `✔ Применено к ${n} маркет${n===1?'у':n<5?'ам':'ам'}`;
     hint.style.color = 'var(--accent-green)';
