@@ -166,8 +166,18 @@ class APIClient:
         return None
 
     async def get_order(self, order_id: str) -> dict | None:
-        """Статус конкретного ордера."""
-        return await self._get(f"/v1/orders/{order_id}")
+        """Статус конкретного ордера. Поддерживает оба формата ответа API."""
+        raw = await self._get_raw_page(f"/v1/orders/{order_id}", {})
+        if not raw:
+            return None
+        # {"success": true, "data": {...}} или просто {"data": {...}}
+        data = raw.get("data")
+        if isinstance(data, dict):
+            return data
+        # Иногда API возвращает сам объект ордера без обёртки
+        if "status" in raw:
+            return raw
+        return None
 
     async def place_order(self, body: dict) -> dict | None:
         """Выставить лимитный ордер. Возвращает сырой ответ API."""
