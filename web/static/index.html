@@ -546,6 +546,7 @@
     <div class="info-right">
       <span id="ws-addr" style="color:var(--text2);font-size:11px;font-family:monospace">—</span>
       <span>Баланс: <span class="balance-val" id="balance-display">—</span></span>
+      <span class="orders-badge" id="markets-badge">0 рынков</span>
       <span class="orders-badge" id="orders-badge">0 ордеров</span>
     </div>
   </div>
@@ -933,6 +934,7 @@ function applyBotState(data) {
       renderOrUpdateCard(id, ms);
     });
     checkEmpty();
+    updateMarketsCount();
   }
 }
 
@@ -964,6 +966,13 @@ function updateBotStatusUI() {
 function updateBalance(val) {
   const el = document.getElementById('balance-display');
   el.textContent = (val !== null && val !== undefined) ? '$'+parseFloat(val).toFixed(2) : '—';
+}
+
+function updateMarketsCount() {
+  const total = Object.keys(state.markets).length;
+  const active = Object.values(state.markets).filter(m => m.settings && m.settings.enabled).length;
+  const el = document.getElementById('markets-badge');
+  el.textContent = active > 0 ? `${active}/${total} рынков` : `${total} рынков`;
 }
 
 function updateOrdersCount(n) {
