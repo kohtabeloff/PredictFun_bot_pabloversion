@@ -96,9 +96,16 @@ async def cancel_market_orders(market_id: str):
     if worker:
         ids = worker.get_active_order_ids()
         if ids and engine.order_manager:
-            await engine.order_manager.cancel_orders(ids, market_id=market_id)
-        worker.order_yes = None
-        worker.order_no = None
+            ok = await engine.order_manager.cancel_orders(ids, market_id=market_id)
+            if ok:
+                worker.order_yes = None
+                worker.order_no = None
+            else:
+                engine._broadcast_state()
+                return {"ok": False, "error": "Не удалось отменить ордера на бирже"}
+        else:
+            worker.order_yes = None
+            worker.order_no = None
         engine._broadcast_state()
     return {"ok": True}
 
@@ -115,6 +122,7 @@ class UpdateSettingsRequest(BaseModel):
     volatile_reposition_limit: int | None = None
     volatile_window_seconds: float | None = None
     volatile_cooldown_seconds: float | None = None
+    min_orders_before: int | None = None
 
 
 @app.put("/api/markets/{market_id}/settings")

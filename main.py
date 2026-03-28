@@ -102,6 +102,9 @@ async def main():
                 err = sum(1 for v in results.values() if "error" in str(v))
                 enabled = sum(1 for mid in saved if saved[mid].enabled)
                 logger.log(f"Автозапуск: {ok} маркетов загружено, {err} ошибок, {enabled} активных")
+                for mid, result in results.items():
+                    if "error" in str(result):
+                        logger.log(f"  ✗ [{mid}] {result}")
             else:
                 logger.log("Автозапуск: нет сохранённых маркетов")
         except Exception as e:

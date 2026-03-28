@@ -48,6 +48,7 @@ class BotEngine:
         self._state_lock = asyncio.Lock()
         self.balance: float | None = None
         self.ws_connected = False
+        self._guard_failures: dict[str, int] = {}  # order_id -> consecutive fail count
 
     # ─────────────────────────────────────────────────────────────────────────
     # Старт / стоп
@@ -201,22 +202,25 @@ class BotEngine:
         self._broadcast_state()
 
     async def cancel_all(self):
-        """Останавливает все воркеры и отменяет все ордера."""
-        # Сначала отключаем все воркеры чтобы не выставляли новые ордера
+        """Отменяет все ордера. Паузирует воркеры в памяти, но не меняет enabled в settings.json."""
+        # Паузируем воркеры в памяти — чтобы не выставляли новые ордера во время отмены
         for worker in self._workers.values():
             worker.settings = worker.settings.model_copy(update={"enabled": False})
-            self.settings_store.update(worker.market_id, enabled=False)
 
-        # Теперь отменяем существующие ордера
+        # Отменяем существующие ордера
         for worker in self._workers.values():
             ids = worker.get_active_order_ids()
             if ids and self.order_manager:
                 ok = await self.order_manager.cancel_orders(ids, market_id=worker.market_id)
-                if not ok:
-                    self.logger.log(f"[{worker.market_id}] ✗ Не удалось отменить ордера")
-            worker.order_yes = None
-            worker.order_no = None
-        self.logger.log(f"✓ Все ордера отменены, все маркеты остановлены")
+                if ok:
+                    worker.order_yes = None
+                    worker.order_no = None
+                else:
+                    self.logger.log(f"[{worker.market_id}] ✗ Не удалось отменить ордера — состояние сохранено")
+            else:
+                worker.order_yes = None
+                worker.order_no = None
+        self.logger.log("✓ Все ордера отменены. Стратегии приостановлены в памяти (enabled не изменён в настройках)")
         self._broadcast_state()
 
     def update_market_settings(self, market_id: str, **kwargs) -> MarketSettings:
@@ -361,8 +365,14 @@ class BotEngine:
                             continue
                         # Ордер исчез из open — проверим статус
                         if order.order_id not in open_ids:
+                            # Backoff: если API уже много раз не отвечал — замедляемся
+                            fail_count = self._guard_failures.get(order.order_id, 0)
+                            if fail_count > 0 and fail_count % 10 != 0:
+                                continue  # проверяем каждый 10-й цикл вместо каждого
+
                             detail = await self.api.get_order(order.order_id)
                             if detail and detail.get("status") == "FILLED":
+                                self._guard_failures.pop(order.order_id, None)
                                 self.logger.log(
                                     f"⚠ [{worker.market_id}] {side.upper()} ИСПОЛНИЛАСЬ! "
                                     f"Цена {order.price*100:.1f}¢ × {order.shares:.1f} шт"
@@ -403,16 +413,31 @@ class BotEngine:
                                 })
                             elif detail is not None and detail.get("status") == "CANCELLED":
                                 # Подтверждённая отмена — обновляем состояние
+                                self._guard_failures.pop(order.order_id, None)
                                 if side == "yes":
                                     worker.order_yes = None
                                 else:
                                     worker.order_no = None
                             elif detail is None:
                                 # Ошибка API — НЕ сбрасываем, проверим в след. цикле
-                                self.logger.log(
-                                    f"[ExecutionGuard] [{worker.market_id}] {side.upper()} "
-                                    f"не удалось проверить статус ордера, пропускаем"
-                                )
+                                self._guard_failures[order.order_id] = fail_count + 1
+                                new_count = self._guard_failures[order.order_id]
+                                if new_count == 1:
+                                    self.logger.log(
+                                        f"[ExecutionGuard] [{worker.market_id}] {side.upper()} "
+                                        f"не удалось проверить статус ордера, пропускаем"
+                                    )
+                                elif new_count == 10:
+                                    self.logger.log(
+                                        f"[ExecutionGuard] [{worker.market_id}] {side.upper()} "
+                                        f"ордер {order.order_id} не верифицируется уже {new_count} раз — "
+                                        f"переключаюсь на проверку раз в 10 циклов"
+                                    )
+                                elif new_count % 50 == 0:
+                                    self.logger.log(
+                                        f"[ExecutionGuard] [{worker.market_id}] {side.upper()} "
+                                        f"ордер {order.order_id} не верифицируется ({new_count} попыток)"
+                                    )
 
             except Exception as e:
                 self.logger.log(f"[ExecutionGuard] ✗ {e}")
