@@ -232,6 +232,10 @@ class BotEngine:
         settings = self.settings_store.update(market_id, **kwargs)
         worker = self._workers.get(market_id)
         if worker:
+            # Если enabled не передан явно — сохраняем текущий статус воркера в памяти.
+            # Это нужно чтобы пауза после cancel_all не сбрасывалась при изменении других настроек.
+            if "enabled" not in kwargs:
+                settings = settings.model_copy(update={"enabled": worker.settings.enabled})
             worker.update_settings(settings)
         return settings
 
