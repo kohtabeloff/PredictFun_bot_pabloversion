@@ -200,8 +200,13 @@ async def cancel_all():
 async def remove_all_markets():
     """Удаляет все маркеты: отменяет ордера, останавливает воркеры, чистит настройки."""
     engine = app.state.engine
+    failed = []
     for mid in list(engine._workers.keys()):
-        await engine.remove_market(mid)
+        ok = await engine.remove_market(mid)
+        if not ok:
+            failed.append(mid)
+    if failed:
+        raise HTTPException(409, f"Не удалось отменить ордера для маркетов: {', '.join(failed)}")
     return {"ok": True}
 
 
