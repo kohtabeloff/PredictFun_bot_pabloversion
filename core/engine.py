@@ -186,15 +186,20 @@ class BotEngine:
                 results[mid] = f"error: {e}"
         return results
 
-    async def remove_market(self, market_id: str):
-        """Останавливает воркер и отменяет все ордера маркета."""
+    async def remove_market(self, market_id: str) -> bool:
+        """Останавливает воркер и отменяет все ордера маркета.
+        Возвращает False если ордера не удалось отменить — маркет остаётся под управлением."""
         worker = self._workers.get(market_id)
         if worker:
-            # Сначала отменяем ордера — пока воркер ещё в _workers (инспектор видит его)
             ids = worker.get_active_order_ids()
             if ids and self.order_manager:
-                await self.order_manager.cancel_orders(ids, market_id=market_id)
-            # Только после отмены убираем из управления
+                ok = await self.order_manager.cancel_orders(ids, market_id=market_id)
+                if not ok:
+                    self.logger.log(
+                        f"[{market_id}] ✗ Не удалось отменить ордера — маркет остаётся под управлением"
+                    )
+                    self._broadcast_state()
+                    return False
             self._workers.pop(market_id, None)
             await worker.stop()
             if self.ws:
@@ -202,6 +207,7 @@ class BotEngine:
         self._market_states.pop(market_id, None)
         self.settings_store.remove(market_id)
         self._broadcast_state()
+        return True
 
     async def cancel_all(self):
         """Отменяет все активные ордера. Стратегии продолжают работать."""

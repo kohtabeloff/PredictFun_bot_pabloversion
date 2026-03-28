@@ -84,7 +84,9 @@ async def add_markets(req: AddMarketsRequest):
 @app.delete("/api/markets/{market_id}")
 async def remove_market(market_id: str):
     engine = app.state.engine
-    await engine.remove_market(market_id)
+    ok = await engine.remove_market(market_id)
+    if not ok:
+        raise HTTPException(409, "Не удалось отменить ордера на бирже — маркет остаётся под управлением")
     return {"ok": True}
 
 
