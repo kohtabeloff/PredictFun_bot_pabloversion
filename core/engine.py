@@ -188,12 +188,14 @@ class BotEngine:
 
     async def remove_market(self, market_id: str):
         """Останавливает воркер и отменяет все ордера маркета."""
-        worker = self._workers.pop(market_id, None)
+        worker = self._workers.get(market_id)
         if worker:
-            # Отменяем ордера
+            # Сначала отменяем ордера — пока воркер ещё в _workers (инспектор видит его)
             ids = worker.get_active_order_ids()
             if ids and self.order_manager:
                 await self.order_manager.cancel_orders(ids, market_id=market_id)
+            # Только после отмены убираем из управления
+            self._workers.pop(market_id, None)
             await worker.stop()
             if self.ws:
                 self.ws.unsubscribe(market_id)
@@ -202,12 +204,7 @@ class BotEngine:
         self._broadcast_state()
 
     async def cancel_all(self):
-        """Отменяет все ордера. Паузирует воркеры в памяти, но не меняет enabled в settings.json."""
-        # Паузируем воркеры в памяти — чтобы не выставляли новые ордера во время отмены
-        for worker in self._workers.values():
-            worker.settings = worker.settings.model_copy(update={"enabled": False})
-
-        # Отменяем существующие ордера
+        """Отменяет все активные ордера. Стратегии продолжают работать."""
         for worker in self._workers.values():
             ids = worker.get_active_order_ids()
             if ids and self.order_manager:
@@ -220,7 +217,7 @@ class BotEngine:
             else:
                 worker.order_yes = None
                 worker.order_no = None
-        self.logger.log("✓ Все ордера отменены. Стратегии приостановлены в памяти (enabled не изменён в настройках)")
+        self.logger.log("✓ Все ордера отменены")
         self._broadcast_state()
 
     def update_market_settings(self, market_id: str, **kwargs) -> MarketSettings:
