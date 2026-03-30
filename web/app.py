@@ -145,9 +145,13 @@ async def bulk_update_settings(req: UpdateSettingsRequest):
     if not updates:
         raise HTTPException(400, "Нет параметров для обновления")
     results = {}
-    for market_id in list(engine._workers.keys()):
+    # Берём все известные маркеты: и активные воркеры (бот запущен), и из settings_store (бот остановлен)
+    all_market_ids = set(engine._workers.keys()) | set(engine.settings_store.all().keys())
+    for market_id in all_market_ids:
         s = engine.update_market_settings(market_id, **updates)
         results[market_id] = s.model_dump()
+    # Сохраняем как дефолтные — применятся к маркетам, добавленным позже
+    engine.set_global_defaults(**updates)
     return {"updated": len(results), "results": results}
 
 

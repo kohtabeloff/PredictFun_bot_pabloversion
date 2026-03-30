@@ -49,6 +49,7 @@ class BotEngine:
         self.balance: float | None = None
         self.ws_connected = False
         self._guard_failures: dict[str, int] = {}  # order_id -> consecutive fail count
+        self._global_defaults: dict = {}  # настройки по умолчанию для новых маркетов
 
     # ─────────────────────────────────────────────────────────────────────────
     # Старт / стоп
@@ -135,6 +136,28 @@ class BotEngine:
 
         self.logger.log("Остановка бота...")
         self.running = False
+
+        # Отменяем ордера перед остановкой — без надзора они опасны
+        for worker in list(self._workers.values()):
+            ids = worker.get_active_order_ids()
+            if ids and self.order_manager:
+                ok = await self.order_manager.cancel_orders(ids, market_id=worker.market_id)
+                if not ok:
+                    # Одна повторная попытка через секунду
+                    await asyncio.sleep(1)
+                    ok = await self.order_manager.cancel_orders(ids, market_id=worker.market_id)
+                if ok:
+                    worker.order_yes = None
+                    worker.order_no = None
+                else:
+                    self.logger.log(
+                        f"[{worker.market_id}] ⚠ ВНИМАНИЕ: ордера не удалось отменить при остановке — "
+                        f"закрой вручную на бирже! IDs: {ids}"
+                    )
+                    await self._send_telegram(
+                        f"⚠ Бот остановлен, но ордера маркета {worker.market_id} "
+                        f"не удалось отменить — закрой вручную!"
+                    )
 
         # Останавливаем воркеры
         for worker in list(self._workers.values()):
@@ -228,6 +251,10 @@ class BotEngine:
         self.logger.log("✓ Все ордера отменены, стратегии приостановлены")
         self._broadcast_state()
 
+    def set_global_defaults(self, **kwargs):
+        """Сохраняет настройки как дефолтные для новых маркетов (применяются при добавлении)."""
+        self._global_defaults.update(kwargs)
+
     def update_market_settings(self, market_id: str, **kwargs) -> MarketSettings:
         settings = self.settings_store.update(market_id, **kwargs)
         worker = self._workers.get(market_id)
@@ -280,7 +307,11 @@ class BotEngine:
         return await self.api.get_market(market_id)
 
     async def _start_worker(self, market_id: str):
+        is_new = not self.settings_store.has(market_id)
         settings = self.settings_store.get(market_id)
+        # Для новых маркетов применяем глобальные дефолты (заданные через "Общие настройки")
+        if is_new and self._global_defaults:
+            settings = self.settings_store.update(market_id, **self._global_defaults)
         info = self._market_info_cache[market_id]
 
         worker = MarketWorker(
@@ -400,17 +431,24 @@ class BotEngine:
                                         if side == "yes"
                                         else worker.last_calc.mid_price_no
                                     )
-                                await self.order_manager.sell_market(
+                                sell_ok = await self.order_manager.sell_market(
                                     worker.market_id, side, order.shares, mid_price=mid_price
                                 )
+                                if not sell_ok:
+                                    self.logger.log(
+                                        f"[{worker.market_id}] ✗ Авто-продажа {side.upper()} НЕ УДАЛАСЬ "
+                                        f"— позиция требует ручного закрытия!"
+                                    )
 
                                 # Telegram уведомление
+                                sell_status = "✅ Продажа выполнена" if sell_ok else "❌ Продажа НЕ удалась — закрой вручную!"
                                 await self._send_telegram(
                                     f"⚠ Лимитка исполнилась!\n"
                                     f"Маркет: {worker.market_info.get('title', worker.market_id)}\n"
                                     f"Сторона: {side.upper()}\n"
                                     f"Цена: {order.price*100:.1f}¢ × {order.shares:.1f} шт\n"
-                                    f"Сумма: ${order.price * order.shares:.2f}"
+                                    f"Сумма: ${order.price * order.shares:.2f}\n"
+                                    f"{sell_status}"
                                 )
 
                                 self.event_bus.emit({

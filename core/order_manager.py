@@ -58,6 +58,7 @@ class OrderManager:
         self.market_info_cache = market_info_cache  # market_id -> dict
         self.log_func = log_func
         self._builder = None  # predict_sdk OrderBuilder, инициализируем лениво
+        self._sign_lock = asyncio.Lock()  # один поток за раз использует _builder
         self._blocked: dict[tuple, float] = {}  # (market_id, side) -> until_ts
         self._precision_errors: dict[tuple, int] = {}
 
@@ -174,8 +175,10 @@ class OrderManager:
             return body, order_hash
 
         try:
-            return await asyncio.to_thread(_sync)
+            async with self._sign_lock:
+                return await asyncio.to_thread(_sync)
         except Exception as e:
+            self._builder = None  # сбросить — мог остаться в сломанном состоянии
             self.log_func(f"[{market_id}] ✗ Ошибка подписи ордера: {e}")
             return None
 
@@ -186,7 +189,8 @@ class OrderManager:
         if self.is_blocked(market_id, side):
             return None
 
-        price = round(max(MIN_ORDER_PRICE, min(price, MAX_ORDER_PRICE)), 3)
+        dp = self.market_info_cache.get(market_id, {}).get("decimalPrecision", 3)
+        price = round(max(MIN_ORDER_PRICE, min(price, MAX_ORDER_PRICE)), dp)
         if shares <= 0 or price <= 0:
             return None
 
@@ -300,14 +304,16 @@ class OrderManager:
         if mid_price is None:
             info = await self.api.get_market(market_id)
             if info:
-                # Берём last traded price или mid из market info
-                mid_price = info.get("lastTradePrice") or info.get("midPrice") or 0.5
+                # lastTradePrice — это цена YES (вероятность), для NO инвертируем
+                raw = info.get("lastTradePrice") or info.get("midPrice") or 0.5
+                mid_price = (1.0 - raw) if side == "no" else raw
             else:
                 mid_price = 0.5  # fallback
 
         # Продаём на 1 тик ниже mid — практически по рыночной цене
-        tick = 0.001
-        sell_price = round(mid_price - tick, 3)
+        dp = market_info.get("decimalPrecision", 3)
+        tick = 1 / (10 ** dp)
+        sell_price = round(mid_price - tick, dp)
         sell_price = max(MIN_ORDER_PRICE, min(sell_price, MAX_ORDER_PRICE))
 
         self.log_func(

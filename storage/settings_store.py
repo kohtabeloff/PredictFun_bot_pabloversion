@@ -36,6 +36,9 @@ class SettingsStore:
         except Exception as e:
             print(f"Ошибка сохранения настроек: {e}")
 
+    def has(self, market_id: str) -> bool:
+        return market_id in self._data
+
     def get(self, market_id: str) -> MarketSettings:
         if market_id not in self._data:
             self._data[market_id] = MarketSettings(market_id=market_id)

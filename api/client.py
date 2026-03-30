@@ -197,7 +197,8 @@ class APIClient:
             )
             if result is None:
                 return False
-            if isinstance(result, dict) and not result.get("success", True):
+            # _post() возвращает {"ok": False, "status": ...} при HTTP ошибках (нет поля "success")
+            if isinstance(result, dict) and (result.get("ok") is False or not result.get("success", True)):
                 return False
             if i + BATCH < len(order_ids):
                 await asyncio.sleep(0.3)
