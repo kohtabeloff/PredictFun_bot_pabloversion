@@ -156,6 +156,16 @@ class Calculator:
         price_yes = cls.find_price_at_depth(orderbook, "yes", target, mode, decimal_precision, min_orders)
         price_no = cls.find_price_at_depth(orderbook, "no", target, mode, decimal_precision, min_orders)
 
+        # DEBUG: временное логирование для диагностики
+        import logging as _log
+        _log.getLogger("calculator").warning(
+            f"[CALC DEBUG] mid_yes={mid_yes:.4f} mid_no={mid_no:.4f} "
+            f"asks_count={len(asks)} bids_count={len(bids)} "
+            f"asks_first={asks[0] if asks else None} asks_last={asks[-1] if asks else None} "
+            f"price_yes_raw={price_yes:.4f} price_no_raw={price_no:.4f} "
+            f"max_spread_frac={max_spread_frac:.4f} target={target}"
+        )
+
         # Не дальше чем max_auto_spread от mid
         price_yes = max(price_yes, mid_yes - max_spread_frac)
         price_no = max(price_no, mid_no - max_spread_frac)
