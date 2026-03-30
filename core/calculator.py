@@ -81,15 +81,27 @@ class Calculator:
 
             else:  # no
                 levels = [(round(1.0 - float(p), decimal_precision + 1), float(s), float(p)) for p, s in asks]
-                for no_price, shares, yes_price in levels:
+                import logging as _log2
+                for i, (no_price, shares, yes_price) in enumerate(levels):
                     if mode == "bid":
                         acc += no_price * shares
                     else:
                         acc += yes_price * shares
                     levels_seen += 1
+                    if i < 3:
+                        _log2.getLogger("calculator").warning(
+                            f"[NO STEP {i}] no_price={no_price:.4f} shares={shares:.2f} "
+                            f"acc={acc:.2f} target={target_depth} mode={mode}"
+                        )
                     if acc >= target_depth and levels_seen >= min_orders:
+                        _log2.getLogger("calculator").warning(
+                            f"[NO HIT] level={i} no_price={no_price:.4f} acc={acc:.2f} → return {round(no_price - tick, decimal_precision):.4f}"
+                        )
                         return round(no_price - tick, decimal_precision)
                 if levels:
+                    _log2.getLogger("calculator").warning(
+                        f"[NO FALLBACK] levels={len(levels)} last_no={levels[-1][0]:.4f} → return {round(levels[-1][0] - tick, decimal_precision):.4f}"
+                    )
                     return round(levels[-1][0] - tick, decimal_precision)
         except Exception:
             pass
