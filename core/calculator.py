@@ -53,7 +53,7 @@ class Calculator:
         mode: str = "bid",  # "bid" | "ask"
         decimal_precision: int = 3,
         min_orders: int = 0,
-    ) -> float:
+    ) -> tuple[float, bool]:
         """
         Находит цену, при которой кумулятивная ликвидность >= target_depth
         И количество уровней в стакане перед заявкой >= min_orders.
@@ -75,38 +75,22 @@ class Calculator:
                         acc += (1.0 - price) * shares
                     levels_seen += 1
                     if acc >= target_depth and levels_seen >= min_orders:
-                        return round(price - tick, decimal_precision)
-                if levels:
-                    return round(levels[-1][0] - tick, decimal_precision)
+                        return round(price - tick, decimal_precision), True
 
             else:  # no
                 levels = [(round(1.0 - float(p), decimal_precision + 1), float(s), float(p)) for p, s in asks]
-                import logging as _log2
-                for i, (no_price, shares, yes_price) in enumerate(levels):
+                for no_price, shares, yes_price in levels:
                     if mode == "bid":
                         acc += no_price * shares
                     else:
                         acc += yes_price * shares
                     levels_seen += 1
-                    if i < 3:
-                        _log2.getLogger("calculator").warning(
-                            f"[NO STEP {i}] no_price={no_price:.4f} shares={shares:.2f} "
-                            f"acc={acc:.2f} target={target_depth} mode={mode}"
-                        )
                     if acc >= target_depth and levels_seen >= min_orders:
-                        _log2.getLogger("calculator").warning(
-                            f"[NO HIT] level={i} no_price={no_price:.4f} acc={acc:.2f} → return {round(no_price - tick, decimal_precision):.4f}"
-                        )
-                        return round(no_price - tick, decimal_precision)
-                if levels:
-                    _log2.getLogger("calculator").warning(
-                        f"[NO FALLBACK] levels={len(levels)} last_no={levels[-1][0]:.4f} → return {round(levels[-1][0] - tick, decimal_precision):.4f}"
-                    )
-                    return round(levels[-1][0] - tick, decimal_precision)
+                        return round(no_price - tick, decimal_precision), True
         except Exception:
             pass
 
-        return 0.0
+        return 0.0, False
 
     @staticmethod
     def _round_price(price: float, decimal_precision: int) -> float:
@@ -165,18 +149,15 @@ class Calculator:
 
         # Находим цену по кумулятивной ликвидности (и числу уровней, если задано)
         min_orders = settings.min_orders_before or 0
-        price_yes = cls.find_price_at_depth(orderbook, "yes", target, mode, decimal_precision, min_orders)
-        price_no = cls.find_price_at_depth(orderbook, "no", target, mode, decimal_precision, min_orders)
-
-        # DEBUG: временное логирование для диагностики
-        import logging as _log
-        _log.getLogger("calculator").warning(
-            f"[CALC DEBUG] mid_yes={mid_yes:.4f} mid_no={mid_no:.4f} "
-            f"asks_count={len(asks)} bids_count={len(bids)} "
-            f"asks_first={asks[0] if asks else None} asks_last={asks[-1] if asks else None} "
-            f"price_yes_raw={price_yes:.4f} price_no_raw={price_no:.4f} "
-            f"max_spread_frac={max_spread_frac:.4f} target={target}"
+        price_yes_raw, hit_yes = cls.find_price_at_depth(
+            orderbook, "yes", target, mode, decimal_precision, min_orders
         )
+        price_no_raw, hit_no = cls.find_price_at_depth(
+            orderbook, "no", target, mode, decimal_precision, min_orders
+        )
+
+        price_yes = price_yes_raw
+        price_no = price_no_raw
 
         # Не дальше чем max_auto_spread от mid
         price_yes = max(price_yes, mid_yes - max_spread_frac)
@@ -198,10 +179,14 @@ class Calculator:
         # Проверки: ликвидность достаточна И спред не меньше минимального
         min_spread_frac = (settings.min_spread or 0.2) / 100.0
         can_yes = (
+            hit_yes
+            and
             liq_yes >= target
             and abs(mid_yes - price_yes) >= min_spread_frac
         )
         can_no = (
+            hit_no
+            and
             liq_no >= target
             and abs(mid_no - price_no) >= min_spread_frac
         )
