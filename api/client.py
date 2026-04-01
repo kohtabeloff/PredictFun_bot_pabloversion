@@ -122,17 +122,24 @@ class APIClient:
 
     # ── Ордера ───────────────────────────────────────────────────────────────
 
-    async def get_open_orders(self) -> list[dict]:
-        """Все открытые ордера (с пагинацией, retry + refresh JWT)."""
+    async def get_open_orders(self) -> list[dict] | None:
+        """Все открытые ордера (с пагинацией, retry + refresh JWT).
+        Возвращает None при ошибке API, [] если ордеров нет."""
         all_orders: list[dict] = []
         after: str | None = None
+        first_page = True
         while True:
             params: dict = {"status": "OPEN", "first": str(PAGE_SIZE)}
             if after:
                 params["after"] = after
             page = await self._get_raw_page("/v1/orders", params)
             if page is None:
+                # Ошибка API на первой странице — возвращаем None чтобы
+                # отличить от "реально нет ордеров"
+                if first_page:
+                    return None
                 break
+            first_page = False
             orders = page.get("data", [])
             all_orders.extend(orders)
             cursor = page.get("cursor")

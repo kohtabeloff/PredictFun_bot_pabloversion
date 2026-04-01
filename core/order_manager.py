@@ -57,23 +57,20 @@ class OrderManager:
         self.api = api_client
         self.market_info_cache = market_info_cache  # market_id -> dict
         self.log_func = log_func
-        self._builder = None  # predict_sdk OrderBuilder, инициализируем лениво
-        self._sign_lock = asyncio.Lock()  # один поток за раз использует _builder
         self._blocked: dict[tuple, float] = {}  # (market_id, side) -> until_ts
         self._precision_errors: dict[tuple, int] = {}
 
-    def _get_builder(self):
-        if self._builder is None:
-            from predict_sdk import OrderBuilder, ChainId, OrderBuilderOptions
-            privy_key = self.api.privy_wallet_private_key
-            if privy_key.startswith("0x"):
-                privy_key = privy_key[2:]
-            self._builder = OrderBuilder.make(
-                ChainId.BNB_MAINNET,
-                privy_key,
-                OrderBuilderOptions(predict_account=self.api.predict_account_address),
-            )
-        return self._builder
+    def _make_builder(self):
+        """Создаёт новый экземпляр OrderBuilder (thread-safe, без shared state)."""
+        from predict_sdk import OrderBuilder, ChainId, OrderBuilderOptions
+        privy_key = self.api.privy_wallet_private_key
+        if privy_key.startswith("0x"):
+            privy_key = privy_key[2:]
+        return OrderBuilder.make(
+            ChainId.BNB_MAINNET,
+            privy_key,
+            OrderBuilderOptions(predict_account=self.api.predict_account_address),
+        )
 
     def is_blocked(self, market_id: str, side: str) -> bool:
         key = (market_id, side)
@@ -111,7 +108,7 @@ class OrderManager:
 
         def _sync():
             from predict_sdk import Side, BuildOrderInput, LimitHelperInput
-            builder = self._get_builder()
+            builder = self._make_builder()
             sdk_side = Side.BUY if _order_side == "buy" else Side.SELL
             WEI = 10 ** 18
             price_wei = _round_wei(int(price * WEI))
@@ -175,10 +172,8 @@ class OrderManager:
             return body, order_hash
 
         try:
-            async with self._sign_lock:
-                return await asyncio.to_thread(_sync)
+            return await asyncio.to_thread(_sync)
         except Exception as e:
-            self._builder = None  # сбросить — мог остаться в сломанном состоянии
             self.log_func(f"[{market_id}] ✗ Ошибка подписи ордера: {e}")
             return None
 
