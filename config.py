@@ -11,9 +11,21 @@ WS_URL = "wss://ws.predict.fun/ws"
 
 # Пути
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ACCOUNTS_FILE = os.path.join(BASE_DIR, "accounts.txt")
-SETTINGS_FILE = os.path.join(BASE_DIR, "settings.json")
-LOGS_DIR = os.path.join(BASE_DIR, "logs")
+DATA_DIR = BASE_DIR  # переопределяется через set_data_dir() до создания storage-объектов
+ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts.txt")
+SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
+LOGS_DIR = os.path.join(DATA_DIR, "logs")
+
+
+def set_data_dir(path: str):
+    """Переключает все пути к данным на указанную папку.
+    Вызывать ДО создания ConfigStore / SettingsStore / BotLogger."""
+    global DATA_DIR, ACCOUNTS_FILE, SETTINGS_FILE, LOGS_DIR
+    DATA_DIR = os.path.abspath(path)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts.txt")
+    SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
+    LOGS_DIR = os.path.join(DATA_DIR, "logs")
 
 # Дефолтные настройки маркета
 DEFAULT_POSITION_SIZE_USDT = 100.0

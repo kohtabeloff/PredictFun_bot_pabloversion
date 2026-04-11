@@ -83,6 +83,7 @@ class MarketState(BaseModel):
     order_yes: OrderRecord | None = None
     order_no: OrderRecord | None = None
     last_calculation: OrderCalculation | None = None
+    diagnostic: str = ""
     ws_connected: bool = False
     last_update: float = 0.0
 

@@ -274,7 +274,16 @@ class OrderManager:
                 self.place_order(market_id, side, new_price, new_shares)
             )
             results = await asyncio.gather(cancel_task, place_task, return_exceptions=True)
+            cancel_ok = results[0] is True
             new_record = results[1] if not isinstance(results[1], Exception) else None
+            # Если cancel не прошёл, но новый ордер выставился — отменяем его,
+            # чтобы не держать два ордера одновременно в стакане.
+            if not cancel_ok and new_record is not None:
+                self.log_func(
+                    f"[{market_id}] ⚠ cancel не прошёл, отменяю новый ордер {new_record.order_id}"
+                )
+                await self.cancel_orders([new_record.order_id], market_id=market_id)
+                return None
             return new_record
         else:
             return await self.place_order(market_id, side, new_price, new_shares)

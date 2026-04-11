@@ -42,6 +42,7 @@ class BotEngine:
         self._inspector_task: asyncio.Task | None = None
         self._execution_guard_task: asyncio.Task | None = None
         self._balance_task: asyncio.Task | None = None
+        self._bootstrap_task: asyncio.Task | None = None
 
         self.running = False
         self._state = "stopped"  # stopped | starting | running | stopping
@@ -103,6 +104,7 @@ class BotEngine:
             self._inspector_task = asyncio.create_task(self._inspector_loop())
             self._execution_guard_task = asyncio.create_task(self._execution_guard_loop())
             self._balance_task = asyncio.create_task(self._balance_loop())
+            self._bootstrap_task = asyncio.create_task(self._bootstrap_orderbooks_loop())
 
             self.running = True
             self._state = "running"
@@ -112,10 +114,10 @@ class BotEngine:
         except Exception as e:
             self.logger.log(f"✗ Ошибка запуска: {e}")
             # Cleanup частично поднятых ресурсов
-            for task in [self._inspector_task, self._execution_guard_task, self._balance_task]:
+            for task in [self._inspector_task, self._execution_guard_task, self._balance_task, self._bootstrap_task]:
                 if task and not task.done():
                     task.cancel()
-            self._inspector_task = self._execution_guard_task = self._balance_task = None
+            self._inspector_task = self._execution_guard_task = self._balance_task = self._bootstrap_task = None
             if self.ws:
                 self.ws.stop()
                 self.ws = None
@@ -165,7 +167,7 @@ class BotEngine:
         self._workers.clear()
 
         # Отменяем фоновые задачи
-        for task in [self._inspector_task, self._execution_guard_task, self._balance_task]:
+        for task in [self._inspector_task, self._execution_guard_task, self._balance_task, self._bootstrap_task]:
             if task and not task.done():
                 task.cancel()
 
@@ -183,10 +185,11 @@ class BotEngine:
     # Управление маркетами
     # ─────────────────────────────────────────────────────────────────────────
 
-    async def add_markets(self, market_ids: list[str]) -> dict[str, str]:
+    async def add_markets(self, market_ids: list[str], force_disabled: bool = False) -> dict[str, str]:
         """
         Загружает маркеты по ID и запускает воркеры.
         Возвращает {market_id: "ok" | "error: ..."}
+        force_disabled=True — воркер стартует с enabled=False (не сохраняется в settings.json).
         """
         results = {}
         for mid in market_ids:
@@ -204,6 +207,10 @@ class BotEngine:
                     continue
                 self._market_info_cache[mid] = info
                 await self._start_worker(mid)
+                if force_disabled:
+                    worker = self._workers.get(mid)
+                    if worker:
+                        worker.settings = worker.settings.model_copy(update={"enabled": False})
                 results[mid] = "ok"
             except Exception as e:
                 results[mid] = f"error: {e}"
@@ -259,11 +266,19 @@ class BotEngine:
         settings = self.settings_store.update(market_id, **kwargs)
         worker = self._workers.get(market_id)
         if worker:
+            prev_enabled = worker.settings.enabled
             # Если enabled не передан явно — сохраняем текущий статус воркера в памяти.
             # Это нужно чтобы пауза после cancel_all не сбрасывалась при изменении других настроек.
             if "enabled" not in kwargs:
                 settings = settings.model_copy(update={"enabled": worker.settings.enabled})
             worker.update_settings(settings)
+            should_reprocess = settings.enabled and (
+                "enabled" in kwargs or
+                any(k != "enabled" for k in kwargs) or
+                (not prev_enabled and settings.enabled)
+            )
+            if should_reprocess:
+                worker.schedule_reprocess()
         return settings
 
     def get_state(self) -> BotState:
@@ -279,6 +294,7 @@ class BotEngine:
                 order_yes=worker.order_yes,
                 order_no=worker.order_no,
                 last_calculation=worker.last_calc,
+                diagnostic=worker.diagnostic,
                 ws_connected=self.ws.connected if self.ws else False,
                 last_update=worker.last_update,
             )
@@ -418,6 +434,8 @@ class BotEngine:
                             if fail_count > 0 and fail_count % 10 != 0:
                                 continue  # проверяем каждый 10-й цикл вместо каждого
 
+                            _TERMINAL_STATUSES = {"FILLED", "CANCELLED", "EXPIRED", "REJECTED"}
+
                             detail = await self.api.get_order(order.order_id)
                             if detail and detail.get("status") == "FILLED":
                                 self._guard_failures.pop(order.order_id, None)
@@ -466,9 +484,15 @@ class BotEngine:
                                     "price": order.price,
                                     "shares": order.shares,
                                 })
-                            elif detail is not None and detail.get("status") == "CANCELLED":
-                                # Подтверждённая отмена — обновляем состояние
+                            elif detail is not None and detail.get("status") in _TERMINAL_STATUSES:
+                                # Любой терминальный статус (CANCELLED, EXPIRED, REJECTED и др.)
+                                # — ордера уже нет на бирже, сбрасываем из памяти
+                                status = detail.get("status")
                                 self._guard_failures.pop(order.order_id, None)
+                                self.logger.log(
+                                    f"[{worker.market_id}] {side.upper()} ордер {order.order_id} "
+                                    f"завершён со статусом {status} — сбрасываем"
+                                )
                                 if side == "yes":
                                     worker.order_yes = None
                                 else:
@@ -509,6 +533,56 @@ class BotEngine:
             except Exception:
                 pass
             await asyncio.sleep(300)
+
+    async def _bootstrap_orderbooks_loop(self):
+        """Подтягивает стартовые snapshots для маркетов, по которым WS ещё не прислал стакан."""
+        await asyncio.sleep(5)
+        while self.running:
+            try:
+                if not self.ws or not self.ws.connected:
+                    await asyncio.sleep(5)
+                    continue
+
+                missing = [
+                    worker for worker in self._workers.values()
+                    if worker.settings.enabled and worker.last_orderbook is None
+                ]
+                if not missing:
+                    await asyncio.sleep(30)
+                    continue
+
+                self.logger.log(f"[Bootstrap] Нет стакана для {len(missing)} маркетов, запрашиваю snapshot")
+                await self.ws.subscribe_many([worker.market_id for worker in missing], batch_size=20, pause_sec=0.25)
+                await asyncio.sleep(2)
+
+                still_missing = [worker for worker in missing if worker.last_orderbook is None]
+                if not still_missing:
+                    await asyncio.sleep(30)
+                    continue
+
+                sem = asyncio.Semaphore(8)
+
+                async def _bootstrap_one(worker: MarketWorker):
+                    async with sem:
+                        snapshot = await self.ws.fetch_snapshot(worker.market_id, timeout=8.0)
+                        if snapshot:
+                            try:
+                                worker.queue.put_nowait(snapshot)
+                            except asyncio.QueueFull:
+                                try:
+                                    worker.queue.get_nowait()
+                                except asyncio.QueueEmpty:
+                                    pass
+                                try:
+                                    worker.queue.put_nowait(snapshot)
+                                except asyncio.QueueFull:
+                                    pass
+
+                await asyncio.gather(*[_bootstrap_one(worker) for worker in still_missing], return_exceptions=True)
+            except Exception as e:
+                self.logger.log(f"[Bootstrap] ✗ {e}")
+
+            await asyncio.sleep(30)
 
     async def _send_telegram(self, message: str):
         from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID

@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 from models import AccountInfo
-from config import ACCOUNTS_FILE
 
 
-def load_accounts(file_path: str = ACCOUNTS_FILE) -> list[AccountInfo]:
+def load_accounts(file_path: str | None = None) -> list[AccountInfo]:
+    if file_path is None:
+        import config as cfg
+        file_path = cfg.ACCOUNTS_FILE
     """
     Формат: api_key,predict_account_address,privy_wallet_private_key,proxy
     """

@@ -52,12 +52,75 @@ class PredictWebSocket:
             except Exception:
                 pass
 
+    async def subscribe_many(self, market_ids: list[str], batch_size: int = 25, pause_sec: float = 0.2):
+        """Подписывает маркеты батчами, чтобы не заливать WS сотнями subscribe подряд."""
+        if not self._ws or not self._connected:
+            return
+        mids = [str(mid) for mid in market_ids if mid]
+        for i in range(0, len(mids), batch_size):
+            batch = mids[i:i + batch_size]
+            for mid in batch:
+                await self._send_subscribe(mid)
+            if i + batch_size < len(mids):
+                await asyncio.sleep(pause_sec)
+
     async def _send_heartbeat(self, ts):
         if self._ws:
             try:
                 await self._ws.send(json.dumps({"method": "heartbeat", "data": ts}))
             except Exception:
                 pass
+
+    @staticmethod
+    def _extract_orderbook_message(data: dict) -> tuple[str, dict] | None:
+        if data.get("type") != "M":
+            return None
+        topic = data.get("topic", "")
+        if not topic.startswith("predictOrderbook/"):
+            return None
+        market_id = topic.split("/", 1)[1]
+        ob = data.get("data", {})
+        if ob and (ob.get("bids") or ob.get("asks")):
+            return market_id, ob
+        return None
+
+    async def fetch_snapshot(self, market_id: str, timeout: float = 8.0) -> dict | None:
+        """Одноразово получает snapshot стакана через отдельное WS-подключение."""
+        if not HAS_WS:
+            return None
+        try:
+            async with asyncio.timeout(timeout):
+                async with websockets.connect(
+                    self._url,
+                    ping_interval=10,
+                    ping_timeout=10,
+                    close_timeout=5,
+                ) as ws:
+                    msg = {
+                        "method": "subscribe",
+                        "requestId": f"bootstrap-{market_id}",
+                        "params": [f"predictOrderbook/{market_id}"],
+                    }
+                    await ws.send(json.dumps(msg))
+                    async for message in ws:
+                        try:
+                            data = json.loads(message)
+                        except json.JSONDecodeError:
+                            continue
+                        if data.get("type") == "R":
+                            continue
+                        if data.get("topic") == "heartbeat":
+                            try:
+                                await ws.send(json.dumps({"method": "heartbeat", "data": data.get("data")}))
+                            except Exception:
+                                pass
+                            continue
+                        extracted = self._extract_orderbook_message(data)
+                        if extracted and extracted[0] == market_id:
+                            return extracted[1]
+        except Exception:
+            return None
+        return None
 
     async def _run(self):
         if not HAS_WS:
@@ -81,8 +144,7 @@ class PredictWebSocket:
                     self.log_func("[WS] ✓ Подключено")
 
                     await asyncio.sleep(0.3)
-                    for mid in list(self._subscriptions):
-                        await self._send_subscribe(mid)
+                    await self.subscribe_many(list(self._subscriptions))
 
                     async for message in ws:
                         if not self._running:
@@ -102,24 +164,23 @@ class PredictWebSocket:
                                 await self._send_heartbeat(data.get("data"))
                                 continue
 
-                            if topic.startswith("predictOrderbook/"):
-                                mid = topic.split("/", 1)[1]
-                                ob = data.get("data", {})
-                                if ob and (ob.get("bids") or ob.get("asks")):
-                                    q = self._queues.get(mid)
-                                    if q:
+                            extracted = self._extract_orderbook_message(data)
+                            if extracted:
+                                mid, ob = extracted
+                                q = self._queues.get(mid)
+                                if q:
+                                    try:
+                                        q.put_nowait(ob)
+                                    except asyncio.QueueFull:
+                                        # Дроп старого обновления, кладём новое
+                                        try:
+                                            q.get_nowait()
+                                        except asyncio.QueueEmpty:
+                                            pass
                                         try:
                                             q.put_nowait(ob)
                                         except asyncio.QueueFull:
-                                            # Дроп старого обновления, кладём новое
-                                            try:
-                                                q.get_nowait()
-                                            except asyncio.QueueEmpty:
-                                                pass
-                                            try:
-                                                q.put_nowait(ob)
-                                            except asyncio.QueueFull:
-                                                pass
+                                            pass
 
             except asyncio.CancelledError:
                 self.log_func("[WS] Остановлен")

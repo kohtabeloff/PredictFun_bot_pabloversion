@@ -557,6 +557,7 @@
     <button class="btn-start-all" onclick="enableAll(true)">▶ Запустить все</button>
     <button class="btn-cancel" onclick="cancelAll()">✕ Отменить все ордера</button>
     <button class="btn-delete" style="padding:6px 14px;font-size:12px" onclick="removeAllMarkets()">🗑 Удалить все маркеты</button>
+    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="exportMarkets()">⬇ Экспорт списка</button>
     <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="openBotSettings()">⚙ Настройки</button>
   </div>
 </header>
@@ -764,6 +765,17 @@ async function botStop() {
 async function cancelAll() {
   if (!confirm('Отменить все открытые ордера?')) return;
   await apiFetch('POST', '/api/cancel-all');
+}
+
+function exportMarkets() {
+  const ids = Object.keys(state.markets);
+  if (!ids.length) { appendLog('WARN', 'Нет маркетов для экспорта'); return; }
+  const blob = new Blob([ids.join(', ')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'markets.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 async function removeAllMarkets() {

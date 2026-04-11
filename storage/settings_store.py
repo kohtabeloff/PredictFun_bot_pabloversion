@@ -7,12 +7,14 @@ import json
 import os
 
 from models import MarketSettings
-from config import SETTINGS_FILE
 
 
 class SettingsStore:
-    def __init__(self, path: str = SETTINGS_FILE):
-        self._path = path
+    def __init__(self, path: str | None = None):
+        if path is None:
+            import config as cfg
+            path = cfg.SETTINGS_FILE
+        self._path: str = path
         self._data: dict[str, MarketSettings] = {}
         self._load()
 

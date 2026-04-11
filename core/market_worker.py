@@ -41,6 +41,8 @@ class MarketWorker:
         self.order_yes: OrderRecord | None = None
         self.order_no: OrderRecord | None = None
         self.last_calc: OrderCalculation | None = None
+        self.last_orderbook: dict | None = None
+        self.diagnostic: str = "waiting_orderbook"
         self.last_update = 0.0
 
         # Счётчик переставлений (для защиты от волатильности)
@@ -68,6 +70,56 @@ class MarketWorker:
             self.order_yes = None
         if self.order_no and self.order_no.order_id == order_id:
             self.order_no = None
+
+    def schedule_reprocess(self):
+        """Переобрабатывает последний стакан без ожидания нового WS-тика."""
+        if not self.last_orderbook:
+            return
+        try:
+            self.queue.put_nowait(self.last_orderbook)
+        except asyncio.QueueFull:
+            try:
+                self.queue.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
+            try:
+                self.queue.put_nowait(self.last_orderbook)
+            except asyncio.QueueFull:
+                pass
+
+    def _build_diagnostic(self, calc: OrderCalculation | None = None) -> str:
+        if not self.settings.enabled:
+            return "paused"
+        if self.last_orderbook is None:
+            return "waiting_orderbook"
+        if calc is None:
+            bids = self.last_orderbook.get("bids") or []
+            asks = self.last_orderbook.get("asks") or []
+            if not bids or not asks:
+                return "orderbook_empty"
+            return "orderbook_invalid"
+
+        reasons: list[str] = []
+        if self.settings.side in ("both", "yes") and self.order_yes is None and not calc.can_place_yes:
+            if calc.liquidity_yes < calc.min_liquidity:
+                reasons.append(f"yes_liquidity<{calc.min_liquidity:.0f}")
+            elif calc.spread_yes < (self.settings.min_spread or 0.2) / 100.0:
+                reasons.append("yes_spread_too_small")
+            else:
+                reasons.append("yes_filtered")
+        if self.settings.side in ("both", "no") and self.order_no is None and not calc.can_place_no:
+            if calc.liquidity_no < calc.min_liquidity:
+                reasons.append(f"no_liquidity<{calc.min_liquidity:.0f}")
+            elif calc.spread_no < (self.settings.min_spread or 0.2) / 100.0:
+                reasons.append("no_spread_too_small")
+            else:
+                reasons.append("no_filtered")
+
+        if not reasons:
+            if self.order_yes or self.order_no:
+                return "orders_active"
+            return "eligible_waiting_place"
+        return ", ".join(reasons)
 
     def _should_reposition(self, side: str, new_price: float) -> bool:
         """Нужно ли переставить ордер?"""
@@ -125,16 +177,20 @@ class MarketWorker:
 
     async def _process(self, orderbook: dict):
         """Обрабатывает одно обновление стакана."""
+        self.last_orderbook = orderbook
+        self.last_update = time.time()
         if not self.settings.enabled:
+            self.diagnostic = self._build_diagnostic()
             return
 
         decimal_precision = self.market_info.get("decimalPrecision", 3)
         calc = Calculator.calculate(orderbook, self.settings, decimal_precision)
         if calc is None:
+            self.last_calc = None
+            self.diagnostic = self._build_diagnostic(None)
             return
 
         self.last_calc = calc
-        self.last_update = time.time()
 
         is_volatile = self._is_volatile()
 
@@ -223,6 +279,8 @@ class MarketWorker:
             if ok:
                 self.order_no = None
 
+        self.diagnostic = self._build_diagnostic(calc)
+
         # Уведомляем UI
         if self.on_state_update:
             state = MarketState(
@@ -234,6 +292,7 @@ class MarketWorker:
                 order_yes=self.order_yes,
                 order_no=self.order_no,
                 last_calculation=calc,
+                diagnostic=self.diagnostic,
                 ws_connected=True,
                 last_update=self.last_update,
             )

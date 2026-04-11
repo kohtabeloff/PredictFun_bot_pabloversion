@@ -5,3 +5,4 @@ aiohttp>=3.9.0
 pydantic>=2.6.0
 requests>=2.31.0
 predict_sdk
+httpx>=0.27.0

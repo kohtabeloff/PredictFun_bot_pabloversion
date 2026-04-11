@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PredictFun Manager</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #1a1a2e; --card-bg: #16213e; --card-border: #0f3460;
+      --card-border2: #1a3a70; --accent-green: #00d4aa; --accent-blue: #4da6ff;
+      --red: #ff4757; --yellow: #ffa502; --text: #e0e0e0; --text2: #888;
+      --header-bg: #111128; --input-bg: #0d1b3e;
+    }
+    html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+    /* ─── HEADER ─── */
+    header { background: var(--header-bg); border-bottom: 1px solid var(--card-border); padding: 14px 24px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 100; }
+    .logo { font-size: 18px; font-weight: 700; color: var(--accent-blue); }
+    .logo span { color: var(--text2); font-weight: 400; font-size: 14px; margin-left: 8px; }
+    .header-stats { display: flex; gap: 20px; font-size: 12px; color: var(--text2); }
+    .header-stats b { color: var(--text); }
+    .header-right { margin-left: auto; }
+    .btn-add-bot { background: var(--accent-blue); color: #111; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .btn-add-bot:hover { opacity: .85; }
+
+    /* ─── MAIN ─── */
+    main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .section-title { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+
+    /* ─── SUMMARY ─── */
+    .summary-bar { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 16px 24px; display: flex; align-items: center; gap: 0; margin-bottom: 24px; }
+    .s-title { font-size: 15px; font-weight: 700; color: var(--accent-blue); flex: 1; }
+    .s-item { text-align: center; padding: 0 28px; }
+    .s-item + .s-item { border-left: 1px solid var(--card-border); }
+    .s-val { font-size: 22px; font-weight: 700; }
+    .s-val.green { color: var(--accent-green); }
+    .s-label { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+    /* ─── GRID ─── */
+    .bots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+
+    /* ─── BOT CARD ─── */
+    .bot-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 14px; transition: border-color .2s; }
+    .bot-card:hover { border-color: var(--card-border2); }
+    .bot-card.offline { opacity: .55; }
+
+    .card-header { display: flex; align-items: flex-start; gap: 10px; }
+    .avatar { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0; }
+    .name-block { flex: 1; min-width: 0; }
+    .bot-name { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .bot-name input { background: transparent; border: none; border-bottom: 1px solid var(--card-border2); color: var(--text); font-size: 15px; font-weight: 600; outline: none; width: 100%; display: none; }
+    .port-chip { font-size: 11px; color: var(--accent-blue); background: rgba(77,166,255,.1); border: 1px solid rgba(77,166,255,.2); padding: 1px 7px; border-radius: 4px; font-family: monospace; flex-shrink: 0; }
+
+    .status-badge { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+    .status-badge.running  { background: rgba(0,212,170,.12); color: var(--accent-green); }
+    .status-badge.stopped  { background: rgba(255,71,87,.10); color: var(--red); }
+    .status-badge.offline  { background: rgba(136,136,136,.10); color: var(--text2); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot.green { background: var(--accent-green); box-shadow: 0 0 5px var(--accent-green); }
+    .dot.red   { background: var(--red); }
+    .dot.grey  { background: var(--text2); }
+
+    .card-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat-block { background: rgba(15,52,96,.4); border-radius: 7px; padding: 10px; text-align: center; }
+    .stat-val { font-size: 18px; font-weight: 700; }
+    .stat-val.green { color: var(--accent-green); }
+    .stat-val.yellow { color: var(--yellow); }
+    .stat-val.dim { color: var(--text2); }
+    .stat-label { font-size: 10px; color: var(--text2); margin-top: 2px; }
+
+    .card-actions { display: flex; gap: 8px; align-items: center; }
+    .btn { cursor: pointer; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; padding: 7px 14px; transition: opacity .15s; }
+    .btn:hover { opacity: .85; }
+    .btn:active { transform: scale(.97); }
+    .btn-open   { background: var(--accent-blue); color: #111; flex: 1; }
+    .btn-start  { background: var(--accent-green); color: #111; }
+    .btn-stop   { background: rgba(255,71,87,.15); color: var(--red); border: 1px solid rgba(255,71,87,.3); }
+    .btn-ghost  { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); }
+    .btn-danger { background: transparent; border: 1px solid rgba(255,71,87,.3); color: var(--red); font-size: 13px; padding: 6px 10px; }
+
+    /* ─── MODAL ─── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 24px; width: 360px; display: flex; flex-direction: column; gap: 16px; }
+    .modal h3 { font-size: 16px; color: var(--accent-blue); }
+    .modal label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 4px; }
+    .modal input { width: 100%; background: var(--input-bg); border: 1px solid var(--card-border2); color: var(--text); border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none; }
+    .modal input:focus { border-color: var(--accent-blue); }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-modal-save { background: var(--accent-blue); color: #111; border: none; border-radius: 6px; padding: 8px 18px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .btn-modal-cancel { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+
+    /* ─── EMPTY ─── */
+    .empty { text-align: center; color: var(--text2); padding: 60px 20px; font-size: 14px; }
+    .empty .big { font-size: 40px; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">PredictFun <span>Manager</span></div>
+  <div class="header-stats">
+    <span>Онлайн: <b id="stat-online">—</b></span>
+    <span>Активных: <b id="stat-running">—</b></span>
+  </div>
+  <div class="header-right">
+    <button class="btn-add-bot" onclick="openAddModal()">+ Добавить бота</button>
+  </div>
+</header>
+
+<main>
+  <div class="summary-bar">
+    <div class="s-title">Общий дашборд</div>
+    <div class="s-item"><div class="s-val green" id="sum-balance">—</div><div class="s-label">Суммарный баланс</div></div>
+    <div class="s-item"><div class="s-val" id="sum-markets">—</div><div class="s-label">Всего маркетов</div></div>
+    <div class="s-item"><div class="s-val" id="sum-orders">—</div><div class="s-label">Открытых ордеров</div></div>
+    <div class="s-item"><div class="s-val" id="sum-bots">—</div><div class="s-label">Ботов онлайн</div></div>
+  </div>
+
+  <div class="section-title">Аккаунты</div>
+  <div class="bots-grid" id="bots-grid"></div>
+</main>
+
+<!-- Модал добавления бота -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <h3>Добавить бота</h3>
+    <div>
+      <label>Название (для удобства)</label>
+      <input id="new-name" placeholder="Аккаунт 1" />
+    </div>
+    <div>
+      <label>Порт бота</label>
+      <input id="new-port" type="number" placeholder="8081" />
+    </div>
+    <div>
+      <label>ID (латиница, без пробелов)</label>
+      <input id="new-id" placeholder="bot1" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeAddModal()">Отмена</button>
+      <button class="btn-modal-save" onclick="addBot()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const COLORS = [
+    'linear-gradient(135deg,#4da6ff,#6c5ce7)',
+    'linear-gradient(135deg,#00d4aa,#00b894)',
+    'linear-gradient(135deg,#ffa502,#e17055)',
+    'linear-gradient(135deg,#a29bfe,#6c5ce7)',
+    'linear-gradient(135deg,#fd79a8,#e84393)',
+    'linear-gradient(135deg,#55efc4,#00b894)',
+  ];
+
+  let bots = [];
+
+  async function refresh() {
+    try {
+      const res = await fetch('/api/bots');
+      bots = await res.json();
+      renderAll();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function renderAll() {
+    const grid = document.getElementById('bots-grid');
+
+    // Summary
+    const online  = bots.filter(b => b.online).length;
+    const running = bots.filter(b => b.running).length;
+    const totalBalance = bots.filter(b => b.balance != null).reduce((s, b) => s + b.balance, 0);
+    const totalMarkets = bots.reduce((s, b) => s + (b.markets_count || 0), 0);
+    const totalOrders  = bots.reduce((s, b) => s + (b.orders_count  || 0), 0);
+    const hasBalance   = bots.some(b => b.balance != null);
+
+    document.getElementById('stat-online').textContent  = online;
+    document.getElementById('stat-running').textContent = running;
+    document.getElementById('sum-balance').textContent  = hasBalance ? `$${totalBalance.toFixed(2)}` : '—';
+    document.getElementById('sum-markets').textContent  = totalMarkets;
+    document.getElementById('sum-orders').textContent   = totalOrders;
+    document.getElementById('sum-bots').textContent     = `${online} / ${bots.length}`;
+
+    if (!bots.length) {
+      grid.innerHTML = '<div class="empty"><div class="big">🤖</div>Нет ботов. Нажми «+ Добавить бота».</div>';
+      return;
+    }
+
+    grid.innerHTML = bots.map((b, i) => renderCard(b, i)).join('');
+  }
+
+  function renderCard(b, i) {
+    const letter   = (b.name || b.id)[0].toUpperCase();
+    const color    = COLORS[i % COLORS.length];
+    const offline  = !b.online;
+    const cls      = offline ? 'bot-card offline' : 'bot-card';
+
+    let statusBadge;
+    if (!b.online)        statusBadge = `<div class="status-badge offline"><span class="dot grey"></span>Офлайн</div>`;
+    else if (b.running)   statusBadge = `<div class="status-badge running"><span class="dot green"></span>Работает</div>`;
+    else                  statusBadge = `<div class="status-badge stopped"><span class="dot red"></span>Остановлен</div>`;
+
+    const balance = b.balance != null ? `<div class="stat-val green">$${b.balance.toFixed(2)}</div>` : `<div class="stat-val dim">—</div>`;
+    const markets = b.online ? `<div class="stat-val">${b.markets_count}</div>` : `<div class="stat-val dim">—</div>`;
+    const orders  = b.online ? `<div class="stat-val yellow">${b.orders_count}</div>` : `<div class="stat-val dim">—</div>`;
+
+    let actions;
+    if (!b.online) {
+      actions = `
+        <button class="btn btn-ghost" style="flex:1;cursor:default">Процесс не запущен</button>
+        <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
+    } else if (b.running) {
+      actions = `
+        <button class="btn btn-open" onclick="openBot(${b.port})">↗ Открыть UI</button>
+        <button class="btn btn-stop" onclick="proxyPost('${b.id}','api/bot/stop')">■ Стоп</button>
+        <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
+    } else {
+      actions = `
+        <button class="btn btn-open" onclick="openBot(${b.port})">↗ Открыть UI</button>
+        <button class="btn btn-start" onclick="proxyPost('${b.id}','api/bot/start')">▶ Старт</button>
+        <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
+    }
+
+    return `
+      <div class="${cls}">
+        <div class="card-header">
+          <div class="avatar" style="background:${color}">${letter}</div>
+          <div class="name-block">
+            <div class="bot-name">
+              <span>${escHtml(b.name || b.id)}</span>
+              <span class="port-chip">:${b.port}</span>
+            </div>
+          </div>
+          ${statusBadge}
+        </div>
+        <div class="card-stats">
+          <div class="stat-block">${balance}<div class="stat-label">Баланс</div></div>
+          <div class="stat-block">${markets}<div class="stat-label">Маркетов</div></div>
+          <div class="stat-block">${orders}<div class="stat-label">Ордеров</div></div>
+        </div>
+        <div class="card-actions">${actions}</div>
+      </div>`;
+  }
+
+  function openBot(port) {
+    window.open(`http://${location.hostname}:${port}`, '_blank');
+  }
+
+  async function proxyPost(botId, path) {
+    try {
+      await fetch(`/api/proxy/${botId}/${path}`, { method: 'POST' });
+      setTimeout(refresh, 1500);
+    } catch (e) { alert('Ошибка: ' + e); }
+  }
+
+  async function removeBot(botId) {
+    if (!confirm(`Удалить бота «${botId}» из списка? Процесс бота не остановится.`)) return;
+    await fetch(`/api/bots/${botId}`, { method: 'DELETE' });
+    refresh();
+  }
+
+  // ─── Модал добавления ───
+  function openAddModal() {
+    document.getElementById('add-modal').classList.add('show');
+    document.getElementById('new-name').focus();
+  }
+  function closeAddModal() {
+    document.getElementById('add-modal').classList.remove('show');
+    ['new-name','new-port','new-id'].forEach(id => document.getElementById(id).value = '');
+  }
+
+  async function addBot() {
+    const name = document.getElementById('new-name').value.trim();
+    const port = parseInt(document.getElementById('new-port').value);
+    let id = document.getElementById('new-id').value.trim();
+    if (!id) id = 'bot' + port;
+    if (!port) { alert('Укажи порт'); return; }
+    try {
+      const r = await fetch('/api/bots', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, name, port }),
+      });
+      if (!r.ok) { const e = await r.json(); alert(e.detail || 'Ошибка'); return; }
+      closeAddModal();
+      refresh();
+    } catch (e) { alert('Ошибка: ' + e); }
+  }
+
+  // Закрытие модала по клику вне
+  document.getElementById('add-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeAddModal();
+  });
+
+  // Enter в полях модала
+  ['new-name','new-port','new-id'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') addBot();
+    });
+  });
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Запуск
+  refresh();
+  setInterval(refresh, 10000); // обновляем статус каждые 10 сек
+</script>
+</body>
+</html>

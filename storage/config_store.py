@@ -1,6 +1,6 @@
 """
 Хранилище глобальных настроек бота (Telegram, аккаунт).
-Сохраняет в bot_config.json рядом с проектом.
+Сохраняет в bot_config.json внутри DATA_DIR.
 """
 from __future__ import annotations
 
@@ -8,9 +8,6 @@ import json
 import os
 from pathlib import Path
 
-from config import BASE_DIR
-
-CONFIG_FILE = os.path.join(BASE_DIR, "bot_config.json")
 
 _DEFAULTS = {
     "api_key": "",
@@ -24,20 +21,24 @@ _DEFAULTS = {
 
 
 class ConfigStore:
-    def __init__(self):
+    def __init__(self, path: str | None = None):
+        if path is None:
+            import config as cfg
+            path = os.path.join(cfg.DATA_DIR, "bot_config.json")
+        self._path = path
         self._data: dict = {}
         self._load()
 
     def _load(self):
-        if Path(CONFIG_FILE).exists():
+        if Path(self._path).exists():
             try:
-                with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                with open(self._path, "r", encoding="utf-8") as f:
                     self._data = json.load(f)
             except Exception:
                 self._data = {}
 
     def _save(self):
-        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        with open(self._path, "w", encoding="utf-8") as f:
             json.dump(self._data, f, ensure_ascii=False, indent=2)
 
     def get(self) -> dict:

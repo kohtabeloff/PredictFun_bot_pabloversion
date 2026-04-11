@@ -5,6 +5,8 @@
 accounts.txt
 bot_config.json
 market_settings.json
+settings.json
+manager.json
 
 # Logs
 logs/

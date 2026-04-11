@@ -16,7 +16,31 @@ from core.engine import BotEngine
 from web.app import app
 
 
+def _parse_data_dir():
+    """Парсит --data-dir и вызывает set_data_dir() ДО создания storage-объектов."""
+    import config as cfg
+    for i, arg in enumerate(sys.argv):
+        if arg == "--data-dir" and i + 1 < len(sys.argv):
+            cfg.set_data_dir(sys.argv[i + 1])
+            return
+        if arg.startswith("--data-dir="):
+            cfg.set_data_dir(arg.split("=", 1)[1])
+            return
+
+
+def _parse_port() -> int:
+    from config import WEB_PORT
+    for i, arg in enumerate(sys.argv):
+        if arg == "--port" and i + 1 < len(sys.argv):
+            return int(sys.argv[i + 1])
+        if arg.startswith("--port="):
+            return int(arg.split("=", 1)[1])
+    return WEB_PORT
+
+
 async def main():
+    _parse_data_dir()
+
     from models import AccountInfo
 
     config_store = ConfigStore()
@@ -59,17 +83,18 @@ async def main():
     cfg.TELEGRAM_TOKEN = saved.get("telegram_token", "") or cfg.TELEGRAM_TOKEN
     cfg.TELEGRAM_CHAT_ID = saved.get("telegram_chat_id", "") or cfg.TELEGRAM_CHAT_ID
 
-    from config import WEB_HOST, WEB_PORT
+    from config import WEB_HOST
+    port = _parse_port()
     config = uvicorn.Config(
         app,
         host=WEB_HOST,
-        port=WEB_PORT,
+        port=port,
         log_level="warning",
         loop="none",
     )
     server = uvicorn.Server(config)
 
-    logger.log(f"Web UI: http://localhost:{WEB_PORT}")
+    logger.log(f"Web UI: http://localhost:{port}")
 
     is_autostart = "--autostart" in sys.argv
 
@@ -141,11 +166,12 @@ async def demo():
     app.state.logger = logger
     app.state.config_store = config_store
 
-    from config import WEB_HOST, WEB_PORT
+    from config import WEB_HOST
+    port = _parse_port()
     config = uvicorn.Config(
         app,
         host=WEB_HOST,
-        port=WEB_PORT,
+        port=port,
         log_level="warning",
         loop="none",
     )

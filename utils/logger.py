@@ -8,9 +8,6 @@ import datetime
 import os
 from typing import Callable
 
-from config import LOGS_DIR
-
-
 class EventBus:
     """Простой pub/sub для real-time обновлений UI."""
 
@@ -41,14 +38,16 @@ class EventBus:
 
 class BotLogger:
     def __init__(self, event_bus: EventBus):
+        import config as cfg
         self.event_bus = event_bus
         self._log_file: str | None = None
         self._recent: list[dict] = []  # последние 500 строк для новых подключений UI
-        os.makedirs(LOGS_DIR, exist_ok=True)
+        self._logs_dir = cfg.LOGS_DIR
+        os.makedirs(self._logs_dir, exist_ok=True)
 
     def _open_log_file(self):
         ts = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        self._log_file = os.path.join(LOGS_DIR, f"session_{ts}.log")
+        self._log_file = os.path.join(self._logs_dir, f"session_{ts}.log")
 
     def log(self, message: str, level: str = "INFO"):
         ts = datetime.datetime.now().strftime("%H:%M:%S")

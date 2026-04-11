@@ -77,7 +77,7 @@ async def add_markets(req: AddMarketsRequest):
     engine = app.state.engine
     if not engine.running:
         raise HTTPException(400, "Бот не запущен")
-    results = await engine.add_markets(req.market_ids)
+    results = await engine.add_markets(req.market_ids, force_disabled=True)
     return {"results": results}
 
 
@@ -211,7 +211,23 @@ async def remove_all_markets():
             failed.append(mid)
     if failed:
         raise HTTPException(409, f"Не удалось отменить ордера для маркетов: {', '.join(failed)}")
+    # Чистим settings.json — в том числе если бот остановлен и воркеров не было
+    for mid in list(engine.settings_store.all().keys()):
+        engine.settings_store.remove(mid)
     return {"ok": True}
+
+
+async def _restore_saved_markets(engine):
+    """Фоновая задача: восстанавливает маркеты из settings.json после старта бота."""
+    saved = engine.settings_store.all()
+    if not saved:
+        return
+    ids = list(saved.keys())
+    engine.logger.log(f"Восстановление {len(ids)} маркетов из settings.json...")
+    results = await engine.add_markets(ids, force_disabled=True)
+    ok = sum(1 for v in results.values() if v in ("ok", "already_exists"))
+    err = [mid for mid, v in results.items() if "error" in str(v)]
+    engine.logger.log(f"Восстановлено {ok} маркетов" + (f", ошибки: {', '.join(err)}" if err else ""))
 
 
 @app.post("/api/bot/start")
@@ -237,6 +253,7 @@ async def bot_start():
         await engine.start()
     except Exception as e:
         raise HTTPException(500, f"Ошибка запуска: {e}")
+    asyncio.create_task(_restore_saved_markets(engine))
     return {"ok": True}
 
 
