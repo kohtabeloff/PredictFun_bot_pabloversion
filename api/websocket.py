@@ -1,6 +1,7 @@
 """
 WebSocket клиент Predict Fun.
 Dispatch входящих обновлений по очередям воркеров.
+Использует aiohttp для поддержки прокси.
 """
 from __future__ import annotations
 
@@ -8,11 +9,7 @@ import asyncio
 import json
 from typing import Callable
 
-try:
-    import websockets
-    HAS_WS = True
-except ImportError:
-    HAS_WS = False
+import aiohttp
 
 from config import WS_URL, format_proxy_for_aiohttp
 
@@ -49,7 +46,7 @@ class PredictWebSocket:
         if self._ws:
             msg = {"method": "subscribe", "requestId": id(market_id), "params": [f"predictOrderbook/{market_id}"]}
             try:
-                await self._ws.send(json.dumps(msg))
+                await self._ws.send_str(json.dumps(msg))
             except Exception:
                 pass
 
@@ -68,7 +65,7 @@ class PredictWebSocket:
     async def _send_heartbeat(self, ts):
         if self._ws:
             try:
-                await self._ws.send(json.dumps({"method": "heartbeat", "data": ts}))
+                await self._ws.send_str(json.dumps({"method": "heartbeat", "data": ts}))
             except Exception:
                 pass
 
@@ -87,105 +84,103 @@ class PredictWebSocket:
 
     async def fetch_snapshot(self, market_id: str, timeout: float = 8.0) -> dict | None:
         """Одноразово получает snapshot стакана через отдельное WS-подключение."""
-        if not HAS_WS:
-            return None
         try:
             async with asyncio.timeout(timeout):
-                _extra = {"proxy": self._proxy} if self._proxy else {}
-                async with websockets.connect(
-                    self._url,
-                    ping_interval=10,
-                    ping_timeout=10,
-                    close_timeout=5,
-                    **_extra,
-                ) as ws:
-                    msg = {
-                        "method": "subscribe",
-                        "requestId": f"bootstrap-{market_id}",
-                        "params": [f"predictOrderbook/{market_id}"],
-                    }
-                    await ws.send(json.dumps(msg))
-                    async for message in ws:
-                        try:
-                            data = json.loads(message)
-                        except json.JSONDecodeError:
-                            continue
-                        if data.get("type") == "R":
-                            continue
-                        if data.get("topic") == "heartbeat":
-                            try:
-                                await ws.send(json.dumps({"method": "heartbeat", "data": data.get("data")}))
-                            except Exception:
-                                pass
-                            continue
-                        extracted = self._extract_orderbook_message(data)
-                        if extracted and extracted[0] == market_id:
-                            return extracted[1]
+                ws_kwargs: dict = {"heartbeat": 10.0}
+                if self._proxy:
+                    ws_kwargs["proxy"] = self._proxy
+                async with aiohttp.ClientSession() as session:
+                    async with session.ws_connect(self._url, **ws_kwargs) as ws:
+                        msg = {
+                            "method": "subscribe",
+                            "requestId": f"bootstrap-{market_id}",
+                            "params": [f"predictOrderbook/{market_id}"],
+                        }
+                        await ws.send_str(json.dumps(msg))
+                        async for message in ws:
+                            if message.type == aiohttp.WSMsgType.TEXT:
+                                try:
+                                    data = json.loads(message.data)
+                                except json.JSONDecodeError:
+                                    continue
+                                if data.get("type") == "R":
+                                    continue
+                                if data.get("topic") == "heartbeat":
+                                    try:
+                                        await ws.send_str(json.dumps({"method": "heartbeat", "data": data.get("data")}))
+                                    except Exception:
+                                        pass
+                                    continue
+                                extracted = self._extract_orderbook_message(data)
+                                if extracted and extracted[0] == market_id:
+                                    return extracted[1]
+                            elif message.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSE):
+                                break
         except Exception:
             return None
         return None
 
     async def _run(self):
-        if not HAS_WS:
-            self.log_func("[WS] ✗ websockets не установлен (pip install websockets)")
-            return
-
         self._running = True
         reconnect_attempt = 0
 
         while self._running:
             try:
-                _extra = {"proxy": self._proxy} if self._proxy else {}
-                async with websockets.connect(
-                    self._url,
-                    ping_interval=10,
-                    ping_timeout=10,
-                    close_timeout=5,
-                    **_extra,
-                ) as ws:
-                    self._ws = ws
-                    self._connected = True
-                    reconnect_attempt = 0
-                    self.log_func("[WS] ✓ Подключено")
+                ws_kwargs: dict = {"heartbeat": 10.0}
+                if self._proxy:
+                    ws_kwargs["proxy"] = self._proxy
 
-                    await asyncio.sleep(0.3)
-                    await self.subscribe_many(list(self._subscriptions))
+                async with aiohttp.ClientSession() as session:
+                    async with session.ws_connect(self._url, **ws_kwargs) as ws:
+                        self._ws = ws
+                        self._connected = True
+                        reconnect_attempt = 0
+                        self.log_func("[WS] ✓ Подключено")
 
-                    async for message in ws:
-                        if not self._running:
-                            break
-                        try:
-                            data = json.loads(message)
-                        except json.JSONDecodeError:
-                            continue
+                        await asyncio.sleep(0.3)
+                        await self.subscribe_many(list(self._subscriptions))
 
-                        if data.get("type") == "R":
-                            continue
+                        async for message in ws:
+                            if not self._running:
+                                break
+                            if message.type == aiohttp.WSMsgType.TEXT:
+                                try:
+                                    data = json.loads(message.data)
+                                except json.JSONDecodeError:
+                                    continue
 
-                        if data.get("type") == "M":
-                            topic = data.get("topic", "")
+                                if data.get("type") == "R":
+                                    continue
 
-                            if topic == "heartbeat":
-                                await self._send_heartbeat(data.get("data"))
-                                continue
+                                if data.get("type") == "M":
+                                    topic = data.get("topic", "")
 
-                            extracted = self._extract_orderbook_message(data)
-                            if extracted:
-                                mid, ob = extracted
-                                q = self._queues.get(mid)
-                                if q:
-                                    try:
-                                        q.put_nowait(ob)
-                                    except asyncio.QueueFull:
-                                        # Дроп старого обновления, кладём новое
-                                        try:
-                                            q.get_nowait()
-                                        except asyncio.QueueEmpty:
-                                            pass
-                                        try:
-                                            q.put_nowait(ob)
-                                        except asyncio.QueueFull:
-                                            pass
+                                    if topic == "heartbeat":
+                                        await self._send_heartbeat(data.get("data"))
+                                        continue
+
+                                    extracted = self._extract_orderbook_message(data)
+                                    if extracted:
+                                        mid, ob = extracted
+                                        q = self._queues.get(mid)
+                                        if q:
+                                            try:
+                                                q.put_nowait(ob)
+                                            except asyncio.QueueFull:
+                                                # Дроп старого обновления, кладём новое
+                                                try:
+                                                    q.get_nowait()
+                                                except asyncio.QueueEmpty:
+                                                    pass
+                                                try:
+                                                    q.put_nowait(ob)
+                                                except asyncio.QueueFull:
+                                                    pass
+
+                            elif message.type == aiohttp.WSMsgType.ERROR:
+                                raise Exception(f"WS error: {ws.exception()}")
+                            elif message.type == aiohttp.WSMsgType.CLOSE:
+                                break
 
             except asyncio.CancelledError:
                 self.log_func("[WS] Остановлен")
