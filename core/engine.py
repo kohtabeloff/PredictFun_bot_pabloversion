@@ -97,6 +97,7 @@ class BotEngine:
             self.ws = PredictWebSocket(
                 api_key=self.account.api_key,
                 log_func=self.logger,
+                proxy=self.account.proxy or None,
             )
             self.ws.start()
 

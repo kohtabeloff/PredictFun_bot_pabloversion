@@ -18,9 +18,10 @@ from config import WS_URL
 
 
 class PredictWebSocket:
-    def __init__(self, api_key: str, log_func: Callable = print):
+    def __init__(self, api_key: str, log_func: Callable = print, proxy: str | None = None):
         url = f"{WS_URL}?apiKey={api_key}" if api_key else WS_URL
         self._url = url
+        self._proxy = proxy
         self.log_func = log_func
         self._queues: dict[str, asyncio.Queue] = {}  # market_id -> Queue воркера
         self._subscriptions: set[str] = set()
@@ -90,11 +91,13 @@ class PredictWebSocket:
             return None
         try:
             async with asyncio.timeout(timeout):
+                _extra = {"proxy": self._proxy} if self._proxy else {}
                 async with websockets.connect(
                     self._url,
                     ping_interval=10,
                     ping_timeout=10,
                     close_timeout=5,
+                    **_extra,
                 ) as ws:
                     msg = {
                         "method": "subscribe",
@@ -132,11 +135,13 @@ class PredictWebSocket:
 
         while self._running:
             try:
+                _extra = {"proxy": self._proxy} if self._proxy else {}
                 async with websockets.connect(
                     self._url,
                     ping_interval=10,
                     ping_timeout=10,
                     close_timeout=5,
+                    **_extra,
                 ) as ws:
                     self._ws = ws
                     self._connected = True
