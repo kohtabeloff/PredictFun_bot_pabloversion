@@ -14,14 +14,14 @@ try:
 except ImportError:
     HAS_WS = False
 
-from config import WS_URL
+from config import WS_URL, format_proxy_for_aiohttp
 
 
 class PredictWebSocket:
     def __init__(self, api_key: str, log_func: Callable = print, proxy: str | None = None):
         url = f"{WS_URL}?apiKey={api_key}" if api_key else WS_URL
         self._url = url
-        self._proxy = proxy
+        self._proxy = format_proxy_for_aiohttp(proxy)  # гарантируем http:// префикс
         self.log_func = log_func
         self._queues: dict[str, asyncio.Queue] = {}  # market_id -> Queue воркера
         self._subscriptions: set[str] = set()

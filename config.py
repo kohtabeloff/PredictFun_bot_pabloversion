@@ -64,7 +64,7 @@ def format_proxy(proxy_string: str | None) -> dict | None:
         return None
     if isinstance(proxy_string, dict):
         return proxy_string
-    if not proxy_string.startswith("http://"):
+    if not proxy_string.startswith(("http://", "https://")):
         proxy_string = f"http://{proxy_string}"
     return {"http": proxy_string, "https": proxy_string}
 
