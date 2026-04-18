@@ -210,6 +210,12 @@ class MarketWorker:
                 if new_order:
                     self.order_yes = new_order
                     self._record_reposition()
+                    self.log_func(
+                        f"[{self.market_id}] YES контекст: mid={calc.mid_price_yes*100:.1f}¢, "
+                        f"спред={calc.spread_yes*100:.1f}%, "
+                        f"ликвидность=${calc.liquidity_yes:.0f}, "
+                        f"расстояние от mid={( calc.mid_price_yes - target_yes)*100:.1f}¢"
+                    )
             elif self.order_yes is not None:
                 if not calc.can_place_yes:
                     # Отменяем — условия не выполнены
@@ -253,6 +259,12 @@ class MarketWorker:
                 if new_order:
                     self.order_no = new_order
                     self._record_reposition()
+                    self.log_func(
+                        f"[{self.market_id}] NO контекст: mid={calc.mid_price_no*100:.1f}¢, "
+                        f"спред={calc.spread_no*100:.1f}%, "
+                        f"ликвидность=${calc.liquidity_no:.0f}, "
+                        f"расстояние от mid={( calc.mid_price_no - target_no)*100:.1f}¢"
+                    )
             elif self.order_no is not None:
                 if not calc.can_place_no:
                     ok = await self.order_manager.cancel_orders(

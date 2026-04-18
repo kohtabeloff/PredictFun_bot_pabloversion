@@ -440,9 +440,24 @@ class BotEngine:
                             detail = await self.api.get_order(order.order_id)
                             if detail and detail.get("status") == "FILLED":
                                 self._guard_failures.pop(order.order_id, None)
+
+                                # Сколько времени ордер жил
+                                filled_after = time.time() - order.placed_at
+                                life_str = f"{int(filled_after // 60)}м {int(filled_after % 60)}с"
+
+                                # Состояние рынка на момент исполнения
+                                market_ctx = ""
+                                mid_price = None
+                                if worker.last_calc:
+                                    lc = worker.last_calc
+                                    mid_price = lc.mid_price_yes if side == "yes" else lc.mid_price_no
+                                    spread = lc.spread_yes if side == "yes" else lc.spread_no
+                                    market_ctx = f", mid={mid_price*100:.1f}¢, спред={spread*100:.1f}%"
+
                                 self.logger.log(
                                     f"⚠ [{worker.market_id}] {side.upper()} ИСПОЛНИЛАСЬ! "
-                                    f"Цена {order.price*100:.1f}¢ × {order.shares:.1f} шт"
+                                    f"Цена {order.price*100:.1f}¢ × {order.shares:.1f} шт "
+                                    f"(жила {life_str}{market_ctx})"
                                 )
                                 # Сбрасываем запись об ордере
                                 if side == "yes":
@@ -451,13 +466,6 @@ class BotEngine:
                                     worker.order_no = None
 
                                 # Авто-продажа — передаём последнюю известную цену
-                                mid_price = None
-                                if worker.last_calc:
-                                    mid_price = (
-                                        worker.last_calc.mid_price_yes
-                                        if side == "yes"
-                                        else worker.last_calc.mid_price_no
-                                    )
                                 sell_ok = await self.order_manager.sell_market(
                                     worker.market_id, side, order.shares, mid_price=mid_price
                                 )
@@ -469,14 +477,18 @@ class BotEngine:
 
                                 # Telegram уведомление
                                 sell_status = "✅ Продажа выполнена" if sell_ok else "❌ Продажа НЕ удалась — закрой вручную!"
-                                await self._send_telegram(
+                                tg_msg = (
                                     f"⚠ Лимитка исполнилась!\n"
                                     f"Маркет: {worker.market_info.get('title', worker.market_id)}\n"
                                     f"Сторона: {side.upper()}\n"
                                     f"Цена: {order.price*100:.1f}¢ × {order.shares:.1f} шт\n"
                                     f"Сумма: ${order.price * order.shares:.2f}\n"
-                                    f"{sell_status}"
+                                    f"Жила: {life_str}\n"
                                 )
+                                if market_ctx:
+                                    tg_msg += f"Рынок: {market_ctx.lstrip(', ')}\n"
+                                tg_msg += sell_status
+                                await self._send_telegram(tg_msg)
 
                                 self.event_bus.emit({
                                     "type": "execution_alert",
