@@ -36,6 +36,10 @@ class APIClient:
         self._session: aiohttp.ClientSession | None = None
 
     @property
+    def is_active(self) -> bool:
+        return self._session is not None
+
+    @property
     def headers(self) -> dict:
         return get_auth_headers(self.jwt_token, self.api_key)
 

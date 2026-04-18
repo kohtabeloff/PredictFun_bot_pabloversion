@@ -223,7 +223,7 @@ class BotEngine:
         worker = self._workers.get(market_id)
         if worker:
             ids = worker.get_active_order_ids()
-            if ids and self.order_manager:
+            if ids and self.order_manager and self.order_manager.api.is_active:
                 ok = await self.order_manager.cancel_orders(ids, market_id=market_id)
                 if not ok:
                     self.logger.log(
@@ -243,7 +243,7 @@ class BotEngine:
     async def cancel_all(self):
         """Отменяет все ордера и приостанавливает стратегии в памяти.
         enabled не пишется в settings.json — при перезапуске всё восстановится."""
-        for worker in self._workers.values():
+        for worker in list(self._workers.values()):
             worker.settings = worker.settings.model_copy(update={"enabled": False})
             ids = worker.get_active_order_ids()
             if ids and self.order_manager:
