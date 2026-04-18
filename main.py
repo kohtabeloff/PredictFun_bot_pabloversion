@@ -89,7 +89,7 @@ async def main():
         app,
         host=WEB_HOST,
         port=port,
-        log_level="warning",
+        log_level="info",
         loop="none",
     )
     server = uvicorn.Server(config)
@@ -172,7 +172,7 @@ async def demo():
         app,
         host=WEB_HOST,
         port=port,
-        log_level="warning",
+        log_level="info",
         loop="none",
     )
     server = uvicorn.Server(config)
