@@ -109,6 +109,17 @@
     .btn-disable { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); font-size: 11px; padding: 3px 10px; border-radius: 4px; }
     .btn-start-all { background: var(--accent-green); color: #111; padding: 6px 14px; font-size: 12px; font-weight: 700; }
     .btn-save { background: var(--accent-green); color: #111; font-size: 11px; padding: 4px 12px; border-radius: 4px; }
+    .btn-lang {
+      background: transparent;
+      border: 1px solid var(--card-border2);
+      color: var(--text2);
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+    .btn-lang:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
 
     /* ─── ADD MARKETS ─── */
     .add-row {
@@ -276,7 +287,7 @@
     }
     select:focus { border-color: var(--accent-blue); }
 
-    /* ─── SETTINGS PANEL (раскрывающаяся) ─── */
+    /* ─── SETTINGS PANEL ─── */
     .settings-panel {
       display: none;
       background: var(--settings-bg);
@@ -469,9 +480,7 @@
       color: var(--accent-blue);
       margin-bottom: 20px;
     }
-    .modal-section {
-      margin-bottom: 20px;
-    }
+    .modal-section { margin-bottom: 20px; }
     .modal-section-title {
       font-size: 12px;
       font-weight: 700;
@@ -488,10 +497,7 @@
       gap: 4px;
       margin-bottom: 10px;
     }
-    .modal-field label {
-      font-size: 12px;
-      color: var(--text2);
-    }
+    .modal-field label { font-size: 12px; color: var(--text2); }
     .modal-field input {
       background: var(--input-bg);
       border: 1px solid var(--card-border);
@@ -536,44 +542,45 @@
 
     <div class="status-pill">
       <span class="dot off" id="dot-bot"></span>
-      <span id="bot-status-text">Остановлен</span>
+      <span id="bot-status-text">—</span>
     </div>
     <div class="status-pill">
       <span class="dot off" id="dot-ws"></span>
-      <span id="ws-status-text">WS нет</span>
+      <span id="ws-status-text">—</span>
     </div>
 
     <div class="info-right">
       <span id="ws-addr" style="color:var(--text2);font-size:11px;font-family:monospace">—</span>
-      <span>Баланс: <span class="balance-val" id="balance-display">—</span></span>
-      <span class="orders-badge" id="markets-badge">0 рынков</span>
-      <span class="orders-badge" id="orders-badge">0 ордеров</span>
+      <span><span data-i18n="balance">Баланс:</span> <span class="balance-val" id="balance-display">—</span></span>
+      <span class="orders-badge" id="markets-badge">—</span>
+      <span class="orders-badge" id="orders-badge">—</span>
+      <button class="btn-lang" id="btn-lang" onclick="toggleLang()">EN</button>
     </div>
   </div>
 
   <div class="header-row2">
-    <button class="btn-start" id="btn-start" onclick="botStart()">▶ СТАРТ</button>
-    <button class="btn-stop"  id="btn-stop"  onclick="botStop()"  disabled>■ СТОП</button>
-    <button class="btn-start-all" onclick="enableAll(true)">▶ Запустить все</button>
-    <button class="btn-cancel" onclick="cancelAll()">✕ Отменить все ордера</button>
-    <button class="btn-delete" style="padding:6px 14px;font-size:12px" onclick="removeAllMarkets()">🗑 Удалить все маркеты</button>
-    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="exportMarkets()">⬇ Экспорт списка</button>
-    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="openBotSettings()">⚙ Настройки</button>
-    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="window.open('http://'+location.hostname+':8000','_blank')">⚡ Менеджер</button>
+    <button class="btn-start" id="btn-start" onclick="botStart()" data-i18n="btn_start">▶ СТАРТ</button>
+    <button class="btn-stop"  id="btn-stop"  onclick="botStop()"  disabled data-i18n="btn_stop">■ СТОП</button>
+    <button class="btn-start-all" onclick="enableAll(true)" data-i18n="btn_run_all">▶ Запустить все</button>
+    <button class="btn-cancel" onclick="cancelAll()" data-i18n="btn_cancel_all">✕ Отменить все ордера</button>
+    <button class="btn-delete" style="padding:6px 14px;font-size:12px" onclick="removeAllMarkets()" data-i18n="btn_delete_all">🗑 Удалить все маркеты</button>
+    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="exportMarkets()" data-i18n="btn_export">⬇ Экспорт списка</button>
+    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="openBotSettings()" data-i18n="btn_settings_hdr">⚙ Настройки</button>
+    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="window.open('http://'+location.hostname+':8000','_blank')" data-i18n="btn_manager">⚡ Менеджер</button>
   </div>
 </header>
 
 <div class="add-row">
-  <input id="market-ids-input" type="text"
+  <input id="market-ids-input" type="text" data-i18n-ph="market_ids_placeholder"
     placeholder="ID рынков через запятую: 1234, 5678, 9012…">
-  <button class="btn-add" onclick="addMarkets()">Добавить</button>
+  <button class="btn-add" onclick="addMarkets()" data-i18n="btn_add">Добавить</button>
 </div>
 
 <!-- ГЛОБАЛЬНЫЕ НАСТРОЙКИ -->
 <div class="global-bar">
   <div class="global-bar-toggle" onclick="toggleGlobalBar()">
     <span id="global-bar-arrow">▶</span>
-    📋 Общие настройки — применить ко всем маркетам
+    <span data-i18n="global_bar_title">📋 Общие настройки — применить ко всем маркетам</span>
   </div>
   <div class="global-bar-body" id="global-bar-body">
     <div class="global-fields">
@@ -581,7 +588,7 @@
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-usdt" onchange="gbToggle('usdt')">
-          <label class="global-label" id="gb-lbl-usdt" for="gb-cb-usdt">Позиция USDT</label>
+          <label class="global-label" id="gb-lbl-usdt" for="gb-cb-usdt" data-i18n="gb_usdt">Позиция USDT</label>
         </div>
         <input class="global-input" id="gb-usdt" type="number" min="1" value="100" placeholder="100" disabled>
       </div>
@@ -589,7 +596,7 @@
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-liq" onchange="gbToggle('liq')">
-          <label class="global-label" id="gb-lbl-liq" for="gb-cb-liq">Целевая ликвидность, $</label>
+          <label class="global-label" id="gb-lbl-liq" for="gb-cb-liq" data-i18n="gb_liq">Целевая ликвидность, $</label>
         </div>
         <input class="global-input" id="gb-liq" type="number" min="0" value="1000" placeholder="1000" disabled>
       </div>
@@ -597,7 +604,7 @@
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-minord" onchange="gbToggle('minord')">
-          <label class="global-label" id="gb-lbl-minord" for="gb-cb-minord">Мин. ордеров перед заявкой (0=выкл)</label>
+          <label class="global-label" id="gb-lbl-minord" for="gb-cb-minord" data-i18n="gb_minord">Мин. ордеров перед заявкой (0=выкл)</label>
         </div>
         <input class="global-input" id="gb-minord" type="number" min="0" value="0" placeholder="0" disabled>
       </div>
@@ -605,7 +612,7 @@
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-spread" onchange="gbToggle('spread')">
-          <label class="global-label" id="gb-lbl-spread" for="gb-cb-spread">Макс. авто-спред, %</label>
+          <label class="global-label" id="gb-lbl-spread" for="gb-cb-spread" data-i18n="gb_spread">Макс. авто-спред, %</label>
         </div>
         <input class="global-input" id="gb-spread" type="number" min="0" step="0.1" value="6" placeholder="6" disabled>
       </div>
@@ -613,7 +620,7 @@
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-minspr" onchange="gbToggle('minspr')">
-          <label class="global-label" id="gb-lbl-minspr" for="gb-cb-minspr">Мин. спред, ¢</label>
+          <label class="global-label" id="gb-lbl-minspr" for="gb-cb-minspr" data-i18n="gb_minspr">Мин. спред, ¢</label>
         </div>
         <input class="global-input" id="gb-minspr" type="number" min="0" step="0.1" value="0.2" placeholder="0.2" disabled>
       </div>
@@ -621,10 +628,10 @@
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-mode" onchange="gbToggle('mode')">
-          <label class="global-label" id="gb-lbl-mode" for="gb-cb-mode">Режим ликвидности</label>
+          <label class="global-label" id="gb-lbl-mode" for="gb-cb-mode" data-i18n="gb_mode">Режим ликвидности</label>
         </div>
         <select class="global-select" id="gb-mode" disabled>
-          <option value="bid">BID (стандарт)</option>
+          <option value="bid" data-i18n="bid_standard">BID (стандарт)</option>
           <option value="ask">ASK</option>
         </select>
       </div>
@@ -632,27 +639,27 @@
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-side" onchange="gbToggle('side')">
-          <label class="global-label" id="gb-lbl-side" for="gb-cb-side">Сторона</label>
+          <label class="global-label" id="gb-lbl-side" for="gb-cb-side" data-i18n="gb_side">Сторона</label>
         </div>
         <select class="global-select" id="gb-side" disabled>
-          <option value="both">Обе стороны</option>
-          <option value="yes">Только YES</option>
-          <option value="no">Только NO</option>
+          <option value="both" data-i18n="both_sides">Обе стороны</option>
+          <option value="yes" data-i18n="yes_only">Только YES</option>
+          <option value="no" data-i18n="no_only">Только NO</option>
         </select>
       </div>
 
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-vlimit" onchange="gbToggle('vlimit')">
-          <label class="global-label" id="gb-lbl-vlimit" for="gb-cb-vlimit">Лимит переставлений</label>
+          <label class="global-label" id="gb-lbl-vlimit" for="gb-cb-vlimit" data-i18n="gb_vlimit">Лимит переставлений</label>
         </div>
-        <input class="global-input" id="gb-vlimit" type="number" min="0" value="0" placeholder="0=выкл" disabled>
+        <input class="global-input" id="gb-vlimit" type="number" min="0" value="0" placeholder="0" disabled>
       </div>
 
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-vwindow" onchange="gbToggle('vwindow')">
-          <label class="global-label" id="gb-lbl-vwindow" for="gb-cb-vwindow">Окно волатильности, сек</label>
+          <label class="global-label" id="gb-lbl-vwindow" for="gb-cb-vwindow" data-i18n="gb_vwindow">Окно волатильности, сек</label>
         </div>
         <input class="global-input" id="gb-vwindow" type="number" min="1" value="60" placeholder="60" disabled>
       </div>
@@ -660,15 +667,15 @@
       <div class="global-field">
         <div class="global-field-header">
           <input type="checkbox" id="gb-cb-vcool" onchange="gbToggle('vcool')">
-          <label class="global-label" id="gb-lbl-vcool" for="gb-cb-vcool">Кулдаун волатильности, сек</label>
+          <label class="global-label" id="gb-lbl-vcool" for="gb-cb-vcool" data-i18n="gb_vcool">Кулдаун волатильности, сек</label>
         </div>
         <input class="global-input" id="gb-vcool" type="number" min="0" value="300" placeholder="300" disabled>
       </div>
 
     </div>
     <div class="global-actions">
-      <button class="btn-apply-all" onclick="applyGlobalSettings()">✔ Применить ко всем</button>
-      <span class="apply-hint" id="gb-hint">Отметь галочкой параметры которые хочешь изменить</span>
+      <button class="btn-apply-all" onclick="applyGlobalSettings()" data-i18n="btn_apply_all">✔ Применить ко всем</button>
+      <span class="apply-hint" id="gb-hint" data-i18n="apply_hint">Отметь галочкой параметры которые хочешь изменить</span>
     </div>
   </div>
 </div>
@@ -677,14 +684,15 @@
   <div class="markets-col" id="markets-panel">
     <div class="empty-state" id="empty-state">
       <span>📊</span>
-      Нет активных рынков.<br>Вставьте ID рынков выше и нажмите «Добавить».
+      <span data-i18n="no_markets">Нет активных рынков.</span><br>
+      <span data-i18n="no_markets_hint">Вставьте ID рынков выше и нажмите «Добавить».</span>
     </div>
   </div>
 
   <div class="console-col">
     <div class="console-header">
-      Консоль
-      <button class="console-clear" onclick="clearConsole()">Очистить</button>
+      <span data-i18n="console">Консоль</span>
+      <button class="console-clear" onclick="clearConsole()" data-i18n="clear">Очистить</button>
     </div>
     <div class="console-body" id="console-body"></div>
   </div>
@@ -692,6 +700,220 @@
 
 <script>
 'use strict';
+
+// ─── ПЕРЕВОДЫ ─────────────────────────────────────────────────────────────────
+const T = {
+  ru: {
+    running: 'Работает', stopped: 'Остановлен',
+    ws_ok: 'WS ок', ws_off: 'WS нет',
+    balance: 'Баланс:',
+    btn_start: '▶ СТАРТ', btn_stop: '■ СТОП',
+    btn_run_all: '▶ Запустить все',
+    btn_cancel_all: '✕ Отменить все ордера',
+    btn_delete_all: '🗑 Удалить все маркеты',
+    btn_export: '⬇ Экспорт списка',
+    btn_settings_hdr: '⚙ Настройки',
+    btn_manager: '⚡ Менеджер',
+    market_ids_placeholder: 'ID рынков через запятую: 1234, 5678, 9012…',
+    btn_add: 'Добавить',
+    global_bar_title: '📋 Общие настройки — применить ко всем маркетам',
+    gb_usdt: 'Позиция USDT', gb_liq: 'Целевая ликвидность, $',
+    gb_minord: 'Мин. ордеров перед заявкой (0=выкл)',
+    gb_spread: 'Макс. авто-спред, %', gb_minspr: 'Мин. спред, ¢',
+    gb_mode: 'Режим ликвидности', gb_side: 'Сторона',
+    gb_vlimit: 'Лимит переставлений',
+    gb_vwindow: 'Окно волатильности, сек', gb_vcool: 'Кулдаун волатильности, сек',
+    btn_apply_all: '✔ Применить ко всем',
+    apply_hint: 'Отметь галочкой параметры которые хочешь изменить',
+    bid_standard: 'BID (стандарт)', ask: 'ASK',
+    both_sides: 'Обе стороны', yes_only: 'Только YES', no_only: 'Только NO',
+    no_markets: 'Нет активных рынков.',
+    no_markets_hint: 'Вставьте ID рынков выше и нажмите «Добавить».',
+    console: 'Консоль', clear: 'Очистить',
+    yes_price: 'YES цена', yes_shares: 'YES акции',
+    no_price: 'NO цена', no_shares: 'NO акции',
+    mid_price: 'Мид цена', liq_yes: 'Ликв. YES', liq_no: 'Ликв. NO', size_usd: 'Размер $',
+    btn_stop_market: '■ Стоп', btn_run_market: '▶ Запустить',
+    btn_settings_card: '⚙ Настройки', btn_hide: '▲ Скрыть', btn_delete: 'Удалить',
+    updated: 'обновлено',
+    section_general: 'Основные', section_liq_spread: 'Ликвидность и спред',
+    section_volatility: 'Защита от волатильности',
+    lbl_side: 'Сторона', lbl_usdt: 'Позиция USDT', lbl_liq_mode: 'Режим ликвидности',
+    lbl_target_liq: 'Целевая ликвидность, $',
+    lbl_min_orders: 'Мин. ордеров перед заявкой (0=выкл)',
+    lbl_max_spread: 'Макс. авто-спред, %', lbl_min_spread: 'Мин. спред, ¢',
+    lbl_vlimit: 'Лимит переставлений (0=выкл)',
+    lbl_vwindow: 'Окно, сек', lbl_vcool: 'Кулдаун, сек',
+    btn_save: '💾 Сохранить',
+    modal_title: '⚙ Настройки бота',
+    section_account: 'Аккаунт',
+    lbl_account_address: 'Адрес аккаунта (0x...)',
+    lbl_proxy: 'Прокси (опционально)',
+    note_restart: '⚠ Изменения аккаунта вступят в силу после перезапуска бота',
+    note_key_stored: '🔒 Ключ хранится в bot_config.json на сервере в открытом виде — убедись что доступ к серверу защищён',
+    section_security: 'Безопасность',
+    lbl_ui_password: 'Пароль для UI (оставь пустым — без защиты)',
+    ph_ui_password: 'Придумай пароль',
+    section_telegram: 'Telegram уведомления',
+    btn_save_settings: 'Сохранить', btn_cancel: 'Отмена',
+    ph_api_key: 'Вставь API key',
+    ph_privkey: 'Вставь приватный ключ',
+    ph_privkey_set: '● сохранён (оставь пустым чтобы не менять)',
+    ws_connected: 'WebSocket подключён',
+    ws_disconnected: 'WebSocket отключён, повтор...',
+    order_filled: '⚡ ИСПОЛНЕН ОРДЕР', market_label: 'Рынок',
+    confirm_cancel_all: 'Отменить все открытые ордера?',
+    confirm_delete_market: 'Удалить рынок {id}?',
+    confirm_delete_all: 'Удалить все {n} маркетов? Ордера будут отменены.',
+    no_markets_export: 'Нет маркетов для экспорта',
+    no_markets_delete: 'Нет маркетов для удаления',
+    no_markets_loaded: 'Нет загруженных маркетов',
+    market_added: '✓ Рынок {id} добавлен',
+    market_already: 'Рынок {id}: уже добавлен',
+    market_error: '✗ Рынок {id}: {status}',
+    added_count: 'Добавлено: {n}',
+    error_count: 'Ошибки при добавлении: {n}',
+    settings_saved: '[{id}] Настройки сохранены',
+    applying: '⏳ Применяю...',
+    applied_n: '✔ Применено к {n} маркетам',
+    global_applied: 'Глобальные настройки применены к {n} маркетам: {keys}',
+    check_one_param: '⚠ Отметь хотя бы один параметр',
+    saving: '⏳ Сохраняю...', saved: '✔ Сохранено',
+    saved_restart: '✔ Сохранено. Перезапусти бота чтобы применить аккаунт',
+    save_error: '✗ Ошибка сохранения',
+    enabled_n: 'Запущено {n} маркетов', disabled_n: 'Остановлено {n} маркетов',
+    deleted_n: 'Удалено {n} маркетов',
+    request_error: 'Ошибка запроса {url}: {msg}',
+    render_error: 'Ошибка рендера карточки {id}: {msg}',
+    hint_default: 'Отметь галочкой параметры которые хочешь изменить',
+    error_generic: '✗ Ошибка',
+  },
+  en: {
+    running: 'Running', stopped: 'Stopped',
+    ws_ok: 'WS ok', ws_off: 'WS off',
+    balance: 'Balance:',
+    btn_start: '▶ START', btn_stop: '■ STOP',
+    btn_run_all: '▶ Enable all',
+    btn_cancel_all: '✕ Cancel all orders',
+    btn_delete_all: '🗑 Remove all markets',
+    btn_export: '⬇ Export list',
+    btn_settings_hdr: '⚙ Settings',
+    btn_manager: '⚡ Manager',
+    market_ids_placeholder: 'Market IDs comma-separated: 1234, 5678, 9012…',
+    btn_add: 'Add',
+    global_bar_title: '📋 Global settings — apply to all markets',
+    gb_usdt: 'Position USDT', gb_liq: 'Target liquidity, $',
+    gb_minord: 'Min. orders before (0=off)',
+    gb_spread: 'Max auto-spread, %', gb_minspr: 'Min spread, ¢',
+    gb_mode: 'Liquidity mode', gb_side: 'Side',
+    gb_vlimit: 'Reposition limit',
+    gb_vwindow: 'Volatility window, sec', gb_vcool: 'Volatility cooldown, sec',
+    btn_apply_all: '✔ Apply to all',
+    apply_hint: 'Check the parameters you want to change',
+    bid_standard: 'BID (standard)', ask: 'ASK',
+    both_sides: 'Both sides', yes_only: 'YES only', no_only: 'NO only',
+    no_markets: 'No active markets.',
+    no_markets_hint: 'Paste market IDs above and click «Add».',
+    console: 'Console', clear: 'Clear',
+    yes_price: 'YES price', yes_shares: 'YES shares',
+    no_price: 'NO price', no_shares: 'NO shares',
+    mid_price: 'Mid price', liq_yes: 'Liq. YES', liq_no: 'Liq. NO', size_usd: 'Size $',
+    btn_stop_market: '■ Stop', btn_run_market: '▶ Run',
+    btn_settings_card: '⚙ Settings', btn_hide: '▲ Hide', btn_delete: 'Remove',
+    updated: 'updated',
+    section_general: 'General', section_liq_spread: 'Liquidity & spread',
+    section_volatility: 'Volatility protection',
+    lbl_side: 'Side', lbl_usdt: 'Position USDT', lbl_liq_mode: 'Liquidity mode',
+    lbl_target_liq: 'Target liquidity, $',
+    lbl_min_orders: 'Min. orders before (0=off)',
+    lbl_max_spread: 'Max auto-spread, %', lbl_min_spread: 'Min spread, ¢',
+    lbl_vlimit: 'Reposition limit (0=off)',
+    lbl_vwindow: 'Window, sec', lbl_vcool: 'Cooldown, sec',
+    btn_save: '💾 Save',
+    modal_title: '⚙ Bot settings',
+    section_account: 'Account',
+    lbl_account_address: 'Account address (0x...)',
+    lbl_proxy: 'Proxy (optional)',
+    note_restart: '⚠ Account changes will take effect after bot restart',
+    note_key_stored: '🔒 Key is stored in bot_config.json on the server in plain text — make sure server access is protected',
+    section_security: 'Security',
+    lbl_ui_password: 'UI password (leave empty — no protection)',
+    ph_ui_password: 'Set a password',
+    section_telegram: 'Telegram notifications',
+    btn_save_settings: 'Save', btn_cancel: 'Cancel',
+    ph_api_key: 'Paste API key',
+    ph_privkey: 'Paste private key',
+    ph_privkey_set: '● saved (leave empty to keep)',
+    ws_connected: 'WebSocket connected',
+    ws_disconnected: 'WebSocket disconnected, reconnecting...',
+    order_filled: '⚡ ORDER FILLED', market_label: 'Market',
+    confirm_cancel_all: 'Cancel all open orders?',
+    confirm_delete_market: 'Remove market {id}?',
+    confirm_delete_all: 'Remove all {n} markets? Orders will be cancelled.',
+    no_markets_export: 'No markets to export',
+    no_markets_delete: 'No markets to remove',
+    no_markets_loaded: 'No markets loaded',
+    market_added: '✓ Market {id} added',
+    market_already: 'Market {id}: already added',
+    market_error: '✗ Market {id}: {status}',
+    added_count: 'Added: {n}',
+    error_count: 'Errors adding: {n}',
+    settings_saved: '[{id}] Settings saved',
+    applying: '⏳ Applying...',
+    applied_n: '✔ Applied to {n} markets',
+    global_applied: 'Global settings applied to {n} markets: {keys}',
+    check_one_param: '⚠ Check at least one parameter',
+    saving: '⏳ Saving...', saved: '✔ Saved',
+    saved_restart: '✔ Saved. Restart the bot to apply account changes',
+    save_error: '✗ Save error',
+    enabled_n: 'Enabled {n} markets', disabled_n: 'Disabled {n} markets',
+    deleted_n: 'Deleted {n} markets',
+    request_error: 'Request error {url}: {msg}',
+    render_error: 'Card render error {id}: {msg}',
+    hint_default: 'Check the parameters you want to change',
+    error_generic: '✗ Error',
+  }
+};
+
+let LANG = localStorage.getItem('predictfun_lang') || 'ru';
+
+function t(key, params) {
+  let s = (T[LANG] || T.ru)[key] || (T.ru)[key] || key;
+  if (params) for (const [k, v] of Object.entries(params)) s = s.replace('{' + k + '}', v);
+  return s;
+}
+
+function applyI18n() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPh);
+  });
+  // Lang toggle button shows the OTHER language
+  const btn = document.getElementById('btn-lang');
+  if (btn) btn.textContent = LANG === 'ru' ? 'EN' : 'RU';
+}
+
+function toggleLang() {
+  LANG = LANG === 'ru' ? 'en' : 'ru';
+  localStorage.setItem('predictfun_lang', LANG);
+  applyI18n();
+  // Re-render dynamic content
+  updateBotStatusUI();
+  setWsDot(document.getElementById('dot-ws').classList.contains('on'));
+  updateMarketsCount();
+  updateOrdersCount(state.orders_count);
+  Object.keys(state.markets).forEach(id => {
+    const card = document.getElementById(`card-${id}`);
+    if (card) updateCard(card, id, state.markets[id]);
+  });
+  checkEmpty();
+  // Update modal if open
+  const modal = document.getElementById('bot-settings-modal');
+  if (modal && modal.classList.contains('open')) _updateModalLabels();
+}
 
 // ─── СОСТОЯНИЕ ────────────────────────────────────────────────────────────────
 const state = {
@@ -706,16 +928,16 @@ const MAX_LOG_LINES = 200;
 let logLines = [];
 let updateTimers = {};
 let execAlertTimer = null;
-let openSettings = {};   // market_id -> bool
+let openSettings = {};
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  applyI18n();
   fetchInitialState();
   connectWebSocket();
   setInterval(updateTimestamps, 5000);
-  setInterval(fetchInitialState, 8000); // fallback: подтягиваем состояние каждые 8 сек
+  setInterval(fetchInitialState, 8000);
 
-  // Восстанавливаем последние значения глобальных настроек
   try {
     const saved = JSON.parse(localStorage.getItem('globalSettingsVals') || 'null');
     if (saved) {
@@ -741,7 +963,7 @@ async function apiFetch(method, url, body) {
     }
     return res.json().catch(() => null);
   } catch (e) {
-    appendLog('ERROR', `Ошибка запроса ${url}: ${e.message}`);
+    appendLog('ERROR', t('request_error', { url, msg: e.message }));
     return null;
   }
 }
@@ -764,13 +986,13 @@ async function botStop() {
 }
 
 async function cancelAll() {
-  if (!confirm('Отменить все открытые ордера?')) return;
+  if (!confirm(t('confirm_cancel_all'))) return;
   await apiFetch('POST', '/api/cancel-all');
 }
 
 function exportMarkets() {
   const ids = Object.keys(state.markets);
-  if (!ids.length) { appendLog('WARN', 'Нет маркетов для экспорта'); return; }
+  if (!ids.length) { appendLog('WARN', t('no_markets_export')); return; }
   const blob = new Blob([ids.join(', ')], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -781,14 +1003,14 @@ function exportMarkets() {
 
 async function removeAllMarkets() {
   const count = Object.keys(state.markets).length;
-  if (!count) { appendLog('WARN', 'Нет маркетов для удаления'); return; }
-  if (!confirm(`Удалить все ${count} маркетов? Ордера будут отменены.`)) return;
+  if (!count) { appendLog('WARN', t('no_markets_delete')); return; }
+  if (!confirm(t('confirm_delete_all', { n: count }))) return;
   const res = await apiFetch('DELETE', '/api/markets');
   if (res) {
     state.markets = {};
     document.querySelectorAll('.card').forEach(c => c.remove());
     checkEmpty();
-    appendLog('INFO', `Удалено ${count} маркетов`);
+    appendLog('INFO', t('deleted_n', { n: count }));
   }
 }
 
@@ -798,7 +1020,6 @@ async function addMarkets() {
   if (!raw) return;
   const ids = raw.split(',').map(s => s.trim()).filter(Boolean);
   if (!ids.length) return;
-  appendLog('INFO', `Добавляем рынки: ${ids.join(', ')}`);
   const res = await apiFetch('POST', '/api/markets', { market_ids: ids });
   if (res) {
     input.value = '';
@@ -807,21 +1028,21 @@ async function addMarkets() {
     Object.entries(results).forEach(([id, status]) => {
       if (status === 'ok') {
         ok++;
-        appendLog('INFO', `✓ Рынок ${id} добавлен`);
+        appendLog('INFO', t('market_added', { id }));
       } else if (status === 'already_exists') {
-        appendLog('INFO', `Рынок ${id}: уже добавлен`);
+        appendLog('INFO', t('market_already', { id }));
       } else {
         fail++;
-        appendLog('ERROR', `✗ Рынок ${id}: ${status}`);
+        appendLog('ERROR', t('market_error', { id, status }));
       }
     });
-    if (ok) appendLog('INFO', `Добавлено: ${ok} рынк${ok===1?'':ok<5?'а':'ов'}`);
-    if (fail) appendLog('ERROR', `Ошибки при добавлении: ${fail} рынк${fail===1?'':fail<5?'а':'ов'}`);
+    if (ok)   appendLog('INFO',  t('added_count',  { n: ok }));
+    if (fail) appendLog('ERROR', t('error_count',  { n: fail }));
   }
 }
 
 async function deleteMarket(marketId) {
-  if (!confirm(`Удалить рынок ${marketId}?`)) return;
+  if (!confirm(t('confirm_delete_market', { id: marketId }))) return;
   await apiFetch('DELETE', `/api/markets/${marketId}`);
   delete state.markets[marketId];
   delete openSettings[marketId];
@@ -831,15 +1052,9 @@ async function deleteMarket(marketId) {
 
 async function saveSettings(marketId) {
   const get = id => document.getElementById(id);
-  const floatVal = id => {
-    const v = parseFloat((get(id) || {}).value);
-    return isNaN(v) ? undefined : v;
-  };
-  const intVal = id => {
-    const v = parseInt((get(id) || {}).value);
-    return isNaN(v) ? undefined : v;
-  };
-  const strVal = id => ((get(id) || {}).value || '').trim() || undefined;
+  const floatVal = id => { const v = parseFloat((get(id) || {}).value); return isNaN(v) ? undefined : v; };
+  const intVal   = id => { const v = parseInt((get(id) || {}).value);   return isNaN(v) ? undefined : v; };
+  const strVal   = id => ((get(id) || {}).value || '').trim() || undefined;
 
   const body = {
     side:                       strVal(`s-side-${marketId}`),
@@ -853,17 +1068,13 @@ async function saveSettings(marketId) {
     volatile_window_seconds:    floatVal(`s-vwindow-${marketId}`),
     volatile_cooldown_seconds:  floatVal(`s-vcool-${marketId}`),
   };
-
-  // убираем undefined
   Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
 
   const res = await apiFetch('PUT', `/api/markets/${marketId}/settings`, body);
   if (res) {
-    appendLog('INFO', `[${marketId}] Настройки сохранены`);
-    // обновляем локальное состояние
+    appendLog('INFO', t('settings_saved', { id: marketId }));
     if (state.markets[marketId]) {
       state.markets[marketId].settings = { ...state.markets[marketId].settings, ...body };
-      // перерисовываем шапку карточки (не сами настройки, они останутся открытыми)
       refreshCardTop(marketId);
     }
   }
@@ -874,7 +1085,6 @@ let ws = null, wsReconnectTimer = null, wsDelay = 2000;
 
 async function connectWebSocket() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  // Получаем WS-токен через API (авторизованный запрос)
   let wsUrl = `${proto}://${location.host}/ws`;
   try {
     const r = await fetch('/api/ws-token');
@@ -888,11 +1098,11 @@ async function connectWebSocket() {
   ws.onopen = () => {
     wsDelay = 2000;
     setWsDot(true);
-    appendLog('INFO', 'WebSocket подключён');
+    appendLog('INFO', t('ws_connected'));
   };
   ws.onclose = () => {
     setWsDot(false);
-    appendLog('WARN', 'WebSocket отключён, повтор...');
+    appendLog('WARN', t('ws_disconnected'));
     clearTimeout(wsReconnectTimer);
     wsReconnectTimer = setTimeout(() => {
       connectWebSocket();
@@ -907,7 +1117,7 @@ async function connectWebSocket() {
 
 function setWsDot(on) {
   document.getElementById('dot-ws').className = 'dot ' + (on ? 'on' : 'off');
-  document.getElementById('ws-status-text').textContent = on ? 'WS ок' : 'WS нет';
+  document.getElementById('ws-status-text').textContent = on ? t('ws_ok') : t('ws_off');
 }
 
 function handleWsMessage(msg) {
@@ -934,13 +1144,9 @@ function applyBotState(data) {
     document.getElementById('ws-addr').textContent = a.slice(0,8)+'…'+a.slice(-4);
   }
   if (data.markets && typeof data.markets === 'object') {
-    // Удаляем карточки маркетов, которых больше нет на сервере
     const serverIds = new Set(Object.keys(data.markets));
     Object.keys(state.markets).forEach(id => {
-      if (!serverIds.has(id)) {
-        delete state.markets[id];
-        removeCard(id);
-      }
+      if (!serverIds.has(id)) { delete state.markets[id]; removeCard(id); }
     });
     Object.entries(data.markets).forEach(([id, ms]) => {
       state.markets[id] = ms;
@@ -965,12 +1171,12 @@ function updateBotStatusUI() {
   const btnP = document.getElementById('btn-stop');
   if (state.running) {
     dot.className = 'dot on';
-    txt.textContent = 'Работает';
+    txt.textContent = t('running');
     btnS.disabled = true;
     btnP.disabled = false;
   } else {
     dot.className = 'dot off';
-    txt.textContent = 'Остановлен';
+    txt.textContent = t('stopped');
     btnS.disabled = false;
     btnP.disabled = true;
   }
@@ -982,15 +1188,18 @@ function updateBalance(val) {
 }
 
 function updateMarketsCount() {
-  const total = Object.keys(state.markets).length;
+  const total  = Object.keys(state.markets).length;
   const active = Object.values(state.markets).filter(m => m.settings && m.settings.enabled).length;
   const el = document.getElementById('markets-badge');
-  el.textContent = active > 0 ? `${active}/${total} рынков` : `${total} рынков`;
+  if (LANG === 'ru') {
+    el.textContent = active > 0 ? `${active}/${total} рынков` : `${total} рынков`;
+  } else {
+    el.textContent = active > 0 ? `${active}/${total} markets` : `${total} markets`;
+  }
 }
 
 function updateOrdersCount(n) {
   state.orders_count = n || 0;
-  // Считаем ожидаемое число ордеров по настройкам включённых маркетов
   let expected = 0;
   Object.values(state.markets).forEach(m => {
     if (m.settings && m.settings.enabled) {
@@ -999,45 +1208,43 @@ function updateOrdersCount(n) {
     }
   });
   const el = document.getElementById('orders-badge');
-  if (expected > 0) {
-    el.textContent = `${state.orders_count} / ${expected} ордер${ordersLabel(expected)}`;
+  if (LANG === 'ru') {
+    const lbl = n => { if(n%10===1&&n%100!==11)return''; if([2,3,4].includes(n%10)&&![12,13,14].includes(n%100))return'а'; return'ов'; };
+    el.textContent = expected > 0
+      ? `${state.orders_count} / ${expected} ордер${lbl(expected)}`
+      : `${state.orders_count} ордер${lbl(state.orders_count)}`;
   } else {
-    el.textContent = `${state.orders_count} ордер${ordersLabel(state.orders_count)}`;
+    el.textContent = expected > 0
+      ? `${state.orders_count} / ${expected} orders`
+      : `${state.orders_count} order${state.orders_count === 1 ? '' : 's'}`;
   }
-}
-
-function ordersLabel(n) {
-  if (n % 10 === 1 && n % 100 !== 11) return '';
-  if ([2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100)) return 'а';
-  return 'ов';
 }
 
 // ─── MARKET CARDS ─────────────────────────────────────────────────────────────
 function renderOrUpdateCard(id, ms) {
   try {
-  let card = document.getElementById(`card-${id}`);
-  if (card) {
-    updateCard(card, id, ms);
-  } else {
-    card = document.createElement('div');
-    card.className = 'card';
-    card.id = `card-${id}`;
-    document.getElementById('empty-state')?.remove();
-    document.getElementById('markets-panel').appendChild(card);
-    card.innerHTML = buildCardHTML(id, ms);
-  }
-  } catch(e) { appendLog('ERROR', `Ошибка рендера карточки ${id}: ${e.message}`); console.error('Card render error', id, e); }
+    let card = document.getElementById(`card-${id}`);
+    if (card) {
+      updateCard(card, id, ms);
+    } else {
+      card = document.createElement('div');
+      card.className = 'card';
+      card.id = `card-${id}`;
+      document.getElementById('empty-state')?.remove();
+      document.getElementById('markets-panel').appendChild(card);
+      card.innerHTML = buildCardHTML(id, ms);
+    }
+  } catch(e) { appendLog('ERROR', t('render_error', { id, msg: e.message })); console.error('Card render error', id, e); }
 
   if (!updateTimers[id]) {
     updateTimers[id] = setInterval(() => {
       const ts = document.getElementById(`ts-${id}`);
-      if (ts && state.markets[id]) ts.textContent = 'обновлено ' + formatAge(state.markets[id].last_update);
+      if (ts && state.markets[id]) ts.textContent = t('updated') + ' ' + formatAge(state.markets[id].last_update);
     }, 5000);
   }
 }
 
 function updateCard(card, id, ms) {
-  // Если настройки открыты — не затираем settings-panel
   const settingsOpen = openSettings[id];
   card.innerHTML = buildCardHTML(id, ms);
   if (settingsOpen) {
@@ -1055,17 +1262,16 @@ function refreshCardTop(id) {
 
 function toggleSettings(id) {
   openSettings[id] = !openSettings[id];
-  const sp = document.getElementById(`settings-${id}`);
+  const sp  = document.getElementById(`settings-${id}`);
   if (sp) sp.classList.toggle('open', openSettings[id]);
   const btn = document.getElementById(`btn-set-${id}`);
-  if (btn) btn.textContent = openSettings[id] ? '▲ Скрыть' : '⚙ Настройки';
+  if (btn) btn.textContent = openSettings[id] ? t('btn_hide') : t('btn_settings_card');
 }
 
 function buildCardHTML(id, m) {
-  const title  = trunc(m.title || id, 50);
-  const status = m.status || 'UNKNOWN';
-  const badges = { REGISTERED:1, ACTIVE:1, INACTIVE:1 };
-  const badgeCls = badges[status] ? `badge-${status}` : 'badge-UNKNOWN';
+  const title   = trunc(m.title || id, 50);
+  const status  = m.status || 'UNKNOWN';
+  const badgeCls = ['REGISTERED','ACTIVE','INACTIVE'].includes(status) ? `badge-${status}` : 'badge-UNKNOWN';
 
   const wsOn = !!m.ws_connected;
   const calc = m.last_calculation || {};
@@ -1085,60 +1291,58 @@ function buildCardHTML(id, m) {
   const age     = m.last_update ? formatAge(m.last_update) : '—';
   const settOpen = !!openSettings[id];
 
-  // стороны
   const sides = [
-    { v:'both', l:'Обе стороны' },
-    { v:'yes',  l:'Только YES' },
-    { v:'no',   l:'Только NO' },
+    { v:'both', l: t('both_sides') },
+    { v:'yes',  l: 'YES only' },
+    { v:'no',   l: 'NO only' },
   ];
   const sideOpts = sides.map(o =>
     `<option value="${o.v}" ${(s.side||'both')===o.v?'selected':''}>${o.l}</option>`
   ).join('');
 
-  // режимы ликвидности
-  const modes = [{ v:'bid', l:'BID (стандарт)' }, { v:'ask', l:'ASK' }];
+  const modes = [{ v:'bid', l: t('bid_standard') }, { v:'ask', l:'ASK' }];
   const modeOpts = modes.map(o =>
     `<option value="${o.v}" ${(s.liquidity_mode||'bid')===o.v?'selected':''}>${o.l}</option>`
   ).join('');
 
   return `
     <div class="card-top">
-      <span class="ws-dot ${wsOn?'on':'off'}" title="WS ${wsOn?'ок':'нет'}"></span>
+      <span class="ws-dot ${wsOn?'on':'off'}" title="WS ${wsOn?t('ws_ok'):t('ws_off')}"></span>
       <span class="card-title" title="${esc(m.title||id)}">${esc(title)}</span>
       <span class="status-badge ${badgeCls}">${esc(status)}</span>
     </div>
 
     <div class="card-stats">
       <div class="stat-cell">
-        <span class="stat-label">YES цена</span>
+        <span class="stat-label">${t('yes_price')}</span>
         <span class="stat-value ${oY?'green':'dim'}">${yPrice}</span>
       </div>
       <div class="stat-cell">
-        <span class="stat-label">YES акции</span>
+        <span class="stat-label">${t('yes_shares')}</span>
         <span class="stat-value ${oY?'green':'dim'}">${yShares}</span>
       </div>
       <div class="stat-cell">
-        <span class="stat-label">NO цена</span>
+        <span class="stat-label">${t('no_price')}</span>
         <span class="stat-value ${oN?'blue':'dim'}">${nPrice}</span>
       </div>
       <div class="stat-cell">
-        <span class="stat-label">NO акции</span>
+        <span class="stat-label">${t('no_shares')}</span>
         <span class="stat-value ${oN?'blue':'dim'}">${nShares}</span>
       </div>
       <div class="stat-cell">
-        <span class="stat-label">Мид цена</span>
+        <span class="stat-label">${t('mid_price')}</span>
         <span class="stat-value">${mid}</span>
       </div>
       <div class="stat-cell">
-        <span class="stat-label">Ликв. YES</span>
-        <span class="stat-value ${canY===false?'red':''}" title="Мин: $${fmtNum(calc.min_liquidity)}">${liqY}</span>
+        <span class="stat-label">${t('liq_yes')}</span>
+        <span class="stat-value ${canY===false?'red':''}" title="Min: $${fmtNum(calc.min_liquidity)}">${liqY}</span>
       </div>
       <div class="stat-cell">
-        <span class="stat-label">Ликв. NO</span>
-        <span class="stat-value ${canN===false?'red':''}" title="Мин: $${fmtNum(calc.min_liquidity)}">${liqN}</span>
+        <span class="stat-label">${t('liq_no')}</span>
+        <span class="stat-value ${canN===false?'red':''}" title="Min: $${fmtNum(calc.min_liquidity)}">${liqN}</span>
       </div>
       <div class="stat-cell">
-        <span class="stat-label">Размер $</span>
+        <span class="stat-label">${t('size_usd')}</span>
         <span class="stat-value">${s.position_size_usdt ? '$'+s.position_size_usdt : '—'}</span>
       </div>
     </div>
@@ -1148,83 +1352,83 @@ function buildCardHTML(id, m) {
         <button id="btn-enable-${escA(id)}"
           class="${s.enabled ? 'btn-disable' : 'btn-enable'}"
           onclick="toggleEnable('${escA(id)}')">
-          ${s.enabled ? '■ Стоп' : '▶ Запустить'}
+          ${s.enabled ? t('btn_stop_market') : t('btn_run_market')}
         </button>
         <button class="btn-settings" id="btn-set-${escA(id)}"
           onclick="toggleSettings('${escA(id)}')">
-          ${settOpen ? '▲ Скрыть' : '⚙ Настройки'}
+          ${settOpen ? t('btn_hide') : t('btn_settings_card')}
         </button>
-        <button class="btn-delete" onclick="deleteMarket('${escA(id)}')">Удалить</button>
+        <button class="btn-delete" onclick="deleteMarket('${escA(id)}')">${t('btn_delete')}</button>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <span class="card-id">#${esc(id)}</span>
-        <span class="card-ts" id="ts-${escA(id)}">обновлено ${esc(age)}</span>
+        <span class="card-ts" id="ts-${escA(id)}">${t('updated')} ${esc(age)}</span>
       </div>
     </div>
 
     <div class="settings-panel ${settOpen?'open':''}" id="settings-${escA(id)}">
-      <div class="settings-divider">Основные</div>
+      <div class="settings-divider">${t('section_general')}</div>
       <div class="settings-grid">
         <div class="settings-group">
-          <label class="settings-label">Сторона</label>
+          <label class="settings-label">${t('lbl_side')}</label>
           <select id="s-side-${escA(id)}">${sideOpts}</select>
         </div>
         <div class="settings-group">
-          <label class="settings-label">Позиция USDT</label>
+          <label class="settings-label">${t('lbl_usdt')}</label>
           <input class="settings-input" id="s-usdt-${escA(id)}" type="number" min="1"
             value="${s.position_size_usdt ?? ''}" placeholder="100">
         </div>
         <div class="settings-group">
-          <label class="settings-label">Режим ликвидности</label>
+          <label class="settings-label">${t('lbl_liq_mode')}</label>
           <select id="s-mode-${escA(id)}">${modeOpts}</select>
         </div>
       </div>
 
-      <div class="settings-divider">Ликвидность и спред</div>
+      <div class="settings-divider">${t('section_liq_spread')}</div>
       <div class="settings-grid">
         <div class="settings-group">
-          <label class="settings-label">Целевая ликвидность, $</label>
+          <label class="settings-label">${t('lbl_target_liq')}</label>
           <input class="settings-input" id="s-liq-${escA(id)}" type="number" min="0"
             value="${s.target_liquidity ?? 1000}" placeholder="1000">
         </div>
         <div class="settings-group">
-          <label class="settings-label">Мин. ордеров перед заявкой (0=выкл)</label>
+          <label class="settings-label">${t('lbl_min_orders')}</label>
           <input class="settings-input" id="s-minord-${escA(id)}" type="number" min="0"
             value="${s.min_orders_before ?? 0}" placeholder="0">
         </div>
         <div class="settings-group">
-          <label class="settings-label">Макс. авто-спред, %</label>
+          <label class="settings-label">${t('lbl_max_spread')}</label>
           <input class="settings-input" id="s-spread-${escA(id)}" type="number" min="0" step="0.1"
             value="${s.max_auto_spread ?? 6}" placeholder="6">
         </div>
         <div class="settings-group">
-          <label class="settings-label">Мин. спред, ¢</label>
+          <label class="settings-label">${t('lbl_min_spread')}</label>
           <input class="settings-input" id="s-minspr-${escA(id)}" type="number" min="0" step="0.1"
             value="${s.min_spread ?? 0.2}" placeholder="0.2">
         </div>
       </div>
 
-      <div class="settings-divider">Защита от волатильности</div>
+      <div class="settings-divider">${t('section_volatility')}</div>
       <div class="settings-grid">
         <div class="settings-group">
-          <label class="settings-label">Лимит переставлений (0=выкл)</label>
+          <label class="settings-label">${t('lbl_vlimit')}</label>
           <input class="settings-input" id="s-vlimit-${escA(id)}" type="number" min="0"
             value="${s.volatile_reposition_limit ?? 0}" placeholder="0">
         </div>
         <div class="settings-group">
-          <label class="settings-label">Окно, сек</label>
+          <label class="settings-label">${t('lbl_vwindow')}</label>
           <input class="settings-input" id="s-vwindow-${escA(id)}" type="number" min="0"
             value="${s.volatile_window_seconds ?? 60}" placeholder="60">
         </div>
         <div class="settings-group">
-          <label class="settings-label">Кулдаун, сек</label>
+          <label class="settings-label">${t('lbl_vcool')}</label>
           <input class="settings-input" id="s-vcool-${escA(id)}" type="number" min="0"
             value="${s.volatile_cooldown_seconds ?? 300}" placeholder="300">
         </div>
       </div>
 
       <div class="settings-actions">
-        <button class="btn-save" onclick="saveSettings('${escA(id)}')">💾 Сохранить</button>
+        <button class="btn-save" onclick="saveSettings('${escA(id)}')">${t('btn_save')}</button>
       </div>
     </div>
   `;
@@ -1244,7 +1448,7 @@ function checkEmpty() {
     const div = document.createElement('div');
     div.className = 'empty-state';
     div.id = 'empty-state';
-    div.innerHTML = '<span>📊</span>Нет активных рынков.<br>Вставьте ID рынков выше и нажмите «Добавить».';
+    div.innerHTML = `<span>📊</span><span>${t('no_markets')}</span><br><span>${t('no_markets_hint')}</span>`;
     panel.appendChild(div);
   } else if (has && em) {
     em.remove();
@@ -1255,7 +1459,7 @@ function updateTimestamps() {
   Object.keys(state.markets).forEach(id => {
     const ts = document.getElementById(`ts-${id}`);
     if (ts && state.markets[id]?.last_update)
-      ts.textContent = 'обновлено ' + formatAge(state.markets[id].last_update);
+      ts.textContent = t('updated') + ' ' + formatAge(state.markets[id].last_update);
   });
 }
 
@@ -1263,7 +1467,7 @@ function updateTimestamps() {
 function showExecutionAlert(msg) {
   const el = document.getElementById('exec-alert');
   const side = (msg.side || '').toUpperCase();
-  el.innerHTML = `⚡ ИСПОЛНЕН ОРДЕР [${side}]<br>Рынок: ${esc(msg.market_id||'')} · ${fmtCents(msg.price)} × ${fmtSh(msg.shares)}`;
+  el.innerHTML = `${t('order_filled')} [${side}]<br>${t('market_label')}: ${esc(msg.market_id||'')} · ${fmtCents(msg.price)} × ${fmtSh(msg.shares)}`;
   el.classList.add('visible');
   const card = document.getElementById(`card-${msg.market_id}`);
   if (card) {
@@ -1279,13 +1483,13 @@ function showExecutionAlert(msg) {
 // ─── CONSOLE ─────────────────────────────────────────────────────────────────
 function appendLog(level, msg, ts) {
   const lvl = (level || 'INFO').toUpperCase();
-  const t   = ts ? fmtLogTs(ts) : nowTs();
-  logLines.push({ ts: t, level: lvl, msg });
+  const time = ts ? fmtLogTs(ts) : nowTs();
+  logLines.push({ ts: time, level: lvl, msg });
   if (logLines.length > MAX_LOG_LINES) logLines.shift();
   const body = document.getElementById('console-body');
   const div  = document.createElement('div');
   div.className = 'log-line';
-  div.innerHTML = `<span class="log-ts">${esc(t)}</span><span class="log-lvl lvl-${esc(lvl)}">${esc(lvl)}</span><span class="log-msg">${esc(msg)}</span>`;
+  div.innerHTML = `<span class="log-ts">${esc(time)}</span><span class="log-lvl lvl-${esc(lvl)}">${esc(lvl)}</span><span class="log-msg">${esc(msg)}</span>`;
   body.appendChild(div);
   while (body.childElementCount > MAX_LOG_LINES) body.removeChild(body.firstChild);
   body.scrollTop = body.scrollHeight;
@@ -1303,9 +1507,9 @@ function fmtNum(n)   { if (n==null) return '—'; const v=parseFloat(n); return 
 function trunc(s,n)  { return s && s.length>n ? s.slice(0,n)+'…' : (s||''); }
 function esc(s)      { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function escA(s)     { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function nowTs()     { return new Date().toLocaleTimeString('ru-RU',{hour12:false}); }
-function formatAge(t){ if(!t)return'—'; const s=Math.floor(Date.now()/1000)-t; if(s<5)return'только что'; if(s<60)return`${s} сек назад`; if(s<3600)return`${Math.floor(s/60)} мин назад`; return`${Math.floor(s/3600)} ч назад`; }
-function fmtLogTs(ts){ if(!ts)return nowTs(); if(typeof ts==='number'){return new Date(ts*1000).toLocaleTimeString('ru-RU',{hour12:false});} const m=String(ts).match(/\d{2}:\d{2}:\d{2}/); return m?m[0]:String(ts).slice(0,8); }
+function nowTs()     { return new Date().toLocaleTimeString(LANG === 'ru' ? 'ru-RU' : 'en-US', {hour12:false}); }
+function formatAge(t){ if(!t)return'—'; const s=Math.floor(Date.now()/1000)-t; if(s<5)return LANG==='ru'?'только что':'just now'; if(s<60)return LANG==='ru'?`${s} сек назад`:`${s}s ago`; if(s<3600)return LANG==='ru'?`${Math.floor(s/60)} мин назад`:`${Math.floor(s/60)}m ago`; return LANG==='ru'?`${Math.floor(s/3600)} ч назад`:`${Math.floor(s/3600)}h ago`; }
+function fmtLogTs(ts){ if(!ts)return nowTs(); if(typeof ts==='number'){return new Date(ts*1000).toLocaleTimeString(LANG==='ru'?'ru-RU':'en-US',{hour12:false});} const m=String(ts).match(/\d{2}:\d{2}:\d{2}/); return m?m[0]:String(ts).slice(0,8); }
 
 // ─── ГЛОБАЛЬНЫЕ НАСТРОЙКИ ────────────────────────────────────────────────────
 function toggleGlobalBar() {
@@ -1343,31 +1547,23 @@ async function applyGlobalSettings() {
   if (checked('vwindow')) body.volatile_window_seconds    = flt('gb-vwindow');
   if (checked('vcool'))   body.volatile_cooldown_seconds  = flt('gb-vcool');
 
-  // Убираем undefined
   Object.keys(body).forEach(k => body[k] === undefined && delete body[k]);
 
+  const hint = document.getElementById('gb-hint');
   if (Object.keys(body).length === 0) {
-    document.getElementById('gb-hint').textContent = '⚠ Отметь хотя бы один параметр';
-    document.getElementById('gb-hint').style.color = 'var(--red)';
-    setTimeout(() => {
-      document.getElementById('gb-hint').textContent = 'Отметь галочкой параметры которые хочешь изменить';
-      document.getElementById('gb-hint').style.color = '';
-    }, 3000);
+    hint.textContent = t('check_one_param');
+    hint.style.color = 'var(--red)';
+    setTimeout(() => { hint.textContent = t('hint_default'); hint.style.color = ''; }, 3000);
     return;
   }
 
   const marketCount = Object.keys(state.markets).length;
-  if (marketCount === 0) {
-    appendLog('WARN', 'Нет загруженных маркетов');
-    return;
-  }
+  if (marketCount === 0) { appendLog('WARN', t('no_markets_loaded')); return; }
 
-  const hint = document.getElementById('gb-hint');
-  hint.textContent = '⏳ Применяю...';
+  hint.textContent = t('applying');
 
   const res = await apiFetch('PUT', '/api/markets/settings/bulk', body);
   if (res) {
-    // Сохраняем значения всех полей в localStorage
     const allVals = {
       usdt: document.getElementById('gb-usdt')?.value,
       liq: document.getElementById('gb-liq')?.value,
@@ -1382,14 +1578,10 @@ async function applyGlobalSettings() {
     };
     localStorage.setItem('globalSettingsVals', JSON.stringify(allVals));
     const n = res.updated || 0;
-    hint.textContent = `✔ Применено к ${n} маркет${n===1?'у':n<5?'ам':'ам'}`;
+    hint.textContent = t('applied_n', { n });
     hint.style.color = 'var(--accent-green)';
-    appendLog('INFO', `Глобальные настройки применены к ${n} маркетам: ${Object.keys(body).join(', ')}`);
-    setTimeout(() => {
-      hint.textContent = 'Отметь галочкой параметры которые хочешь изменить';
-      hint.style.color = '';
-    }, 4000);
-    // Обновить карточки с новыми настройками
+    appendLog('INFO', t('global_applied', { n, keys: Object.keys(body).join(', ') }));
+    setTimeout(() => { hint.textContent = t('hint_default'); hint.style.color = ''; }, 4000);
     if (res.results) {
       Object.entries(res.results).forEach(([mid, settings]) => {
         if (state.markets[mid]) {
@@ -1400,13 +1592,13 @@ async function applyGlobalSettings() {
       });
     }
   } else {
-    hint.textContent = '✗ Ошибка';
+    hint.textContent = t('error_generic');
     hint.style.color = 'var(--red)';
-    setTimeout(() => { hint.textContent = 'Отметь галочкой параметры которые хочешь изменить'; hint.style.color = ''; }, 3000);
+    setTimeout(() => { hint.textContent = t('hint_default'); hint.style.color = ''; }, 3000);
   }
 }
 
-// ─── ВКЛЮЧЕНИЕ / ВЫКЛЮЧЕНИЕ ОРДЕРОВ ─────────────────────────────────────────
+// ─── ВКЛЮЧЕНИЕ / ВЫКЛЮЧЕНИЕ ───────────────────────────────────────────────────
 async function toggleEnable(id) {
   const mkt = state.markets[id];
   if (!mkt) return;
@@ -1417,18 +1609,15 @@ async function toggleEnable(id) {
     const btn = document.getElementById(`btn-enable-${id}`);
     if (btn) {
       btn.className = newVal ? 'btn-disable' : 'btn-enable';
-      btn.textContent = newVal ? '■ Стоп' : '▶ Запустить';
+      btn.textContent = newVal ? t('btn_stop_market') : t('btn_run_market');
     }
-    // При остановке — сразу отменяем ордера
-    if (!newVal) {
-      await apiFetch('POST', `/api/markets/${encodeURIComponent(id)}/cancel`);
-    }
+    if (!newVal) await apiFetch('POST', `/api/markets/${encodeURIComponent(id)}/cancel`);
   }
 }
 
 async function enableAll(val) {
   const ids = Object.keys(state.markets);
-  if (!ids.length) { appendLog('WARN', 'Нет загруженных маркетов'); return; }
+  if (!ids.length) { appendLog('WARN', t('no_markets_loaded')); return; }
   const res = await apiFetch('PUT', '/api/markets/settings/bulk', { enabled: val });
   if (res) {
     ids.forEach(id => {
@@ -1436,10 +1625,10 @@ async function enableAll(val) {
       const btn = document.getElementById(`btn-enable-${id}`);
       if (btn) {
         btn.className = val ? 'btn-disable' : 'btn-enable';
-        btn.textContent = val ? '■ Стоп' : '▶ Запустить';
+        btn.textContent = val ? t('btn_stop_market') : t('btn_run_market');
       }
     });
-    appendLog('INFO', val ? `Запущено ${ids.length} маркетов` : `Остановлено ${ids.length} маркетов`);
+    appendLog('INFO', val ? t('enabled_n', { n: ids.length }) : t('disabled_n', { n: ids.length }));
   }
 }
 
@@ -1451,21 +1640,29 @@ document.addEventListener('keydown', e => {
 });
 
 // ─── НАСТРОЙКИ БОТА (модал) ──────────────────────────────────────────────────
+function _updateModalLabels() {
+  const modal = document.getElementById('bot-settings-modal');
+  if (!modal) return;
+  modal.querySelector('.modal-title').textContent           = t('modal_title');
+  modal.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  modal.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
+}
+
 async function openBotSettings() {
   const data = await apiFetch('GET', '/api/config');
   if (!data) return;
 
-  document.getElementById('cfg-api-key').value        = data.api_key || '';
-  document.getElementById('cfg-address').value         = data.predict_account_address || '';
-  document.getElementById('cfg-privkey').value         = '';
-  document.getElementById('cfg-privkey').placeholder   = data.privy_wallet_private_key_set
-    ? '● сохранён (оставь пустым чтобы не менять)'
-    : 'Вставь приватный ключ';
-  document.getElementById('cfg-proxy').value           = data.proxy || '';
-  document.getElementById('cfg-tg-token').value        = data.telegram_token || '';
-  document.getElementById('cfg-tg-chat').value         = data.telegram_chat_id || '';
-  document.getElementById('cfg-ui-password').value     = '';
+  document.getElementById('cfg-api-key').value      = data.api_key || '';
+  document.getElementById('cfg-address').value       = data.predict_account_address || '';
+  document.getElementById('cfg-privkey').value       = '';
+  document.getElementById('cfg-privkey').placeholder = data.privy_wallet_private_key_set
+    ? t('ph_privkey_set') : t('ph_privkey');
+  document.getElementById('cfg-proxy').value         = data.proxy || '';
+  document.getElementById('cfg-tg-token').value      = data.telegram_token || '';
+  document.getElementById('cfg-tg-chat').value       = data.telegram_chat_id || '';
+  document.getElementById('cfg-ui-password').value   = '';
 
+  _updateModalLabels();
   document.getElementById('bot-settings-modal').classList.add('open');
 }
 
@@ -1475,32 +1672,30 @@ function closeBotSettings() {
 
 async function saveBotSettings() {
   const body = {
-    api_key:                    document.getElementById('cfg-api-key').value.trim(),
-    predict_account_address:    document.getElementById('cfg-address').value.trim(),
-    privy_wallet_private_key:   document.getElementById('cfg-privkey').value.trim(),
-    proxy:                      document.getElementById('cfg-proxy').value.trim(),
-    telegram_token:             document.getElementById('cfg-tg-token').value.trim(),
-    telegram_chat_id:           document.getElementById('cfg-tg-chat').value.trim(),
-    ui_password:                document.getElementById('cfg-ui-password').value,
+    api_key:                  document.getElementById('cfg-api-key').value.trim(),
+    predict_account_address:  document.getElementById('cfg-address').value.trim(),
+    privy_wallet_private_key: document.getElementById('cfg-privkey').value.trim(),
+    proxy:                    document.getElementById('cfg-proxy').value.trim(),
+    telegram_token:           document.getElementById('cfg-tg-token').value.trim(),
+    telegram_chat_id:         document.getElementById('cfg-tg-chat').value.trim(),
+    ui_password:              document.getElementById('cfg-ui-password').value,
   };
 
   const hint = document.getElementById('cfg-hint');
-  hint.textContent = '⏳ Сохраняю...';
+  hint.textContent = t('saving');
   hint.style.color = '';
 
   const res = await apiFetch('POST', '/api/config', body);
   if (res && res.ok) {
-    hint.textContent = res.restart_required
-      ? '✔ Сохранено. Перезапусти бота чтобы применить аккаунт'
-      : '✔ Сохранено';
+    hint.textContent = res.restart_required ? t('saved_restart') : t('saved');
     hint.style.color = 'var(--accent-green)';
-    appendLog('INFO', 'Настройки бота сохранены');
+    appendLog('INFO', t('saved'));
     setTimeout(() => {
       hint.textContent = '';
       if (!res.restart_required) closeBotSettings();
     }, 3000);
   } else {
-    hint.textContent = '✗ Ошибка сохранения';
+    hint.textContent = t('save_error');
     hint.style.color = 'var(--red)';
   }
 }
@@ -1509,40 +1704,40 @@ async function saveBotSettings() {
 <!-- МОДАЛ: НАСТРОЙКИ БОТА -->
 <div class="modal-overlay" id="bot-settings-modal" onclick="if(event.target===this)closeBotSettings()">
   <div class="modal-box">
-    <div class="modal-title">⚙ Настройки бота</div>
+    <div class="modal-title" data-i18n="modal_title">⚙ Настройки бота</div>
 
     <div class="modal-section">
-      <div class="modal-section-title">Аккаунт</div>
+      <div class="modal-section-title" data-i18n="section_account">Аккаунт</div>
       <div class="modal-field">
         <label>API Key</label>
-        <input id="cfg-api-key" type="text" placeholder="Вставь API key">
+        <input id="cfg-api-key" type="text" data-i18n-ph="ph_api_key" placeholder="Вставь API key">
       </div>
       <div class="modal-field">
-        <label>Адрес аккаунта (0x...)</label>
+        <label data-i18n="lbl_account_address">Адрес аккаунта (0x...)</label>
         <input id="cfg-address" type="text" placeholder="0x...">
       </div>
       <div class="modal-field">
         <label>Privy Wallet Private Key</label>
-        <input id="cfg-privkey" type="password" placeholder="Вставь приватный ключ">
+        <input id="cfg-privkey" type="password" data-i18n-ph="ph_privkey" placeholder="Вставь приватный ключ">
       </div>
       <div class="modal-field">
-        <label>Прокси (опционально)</label>
+        <label data-i18n="lbl_proxy">Прокси (опционально)</label>
         <input id="cfg-proxy" type="text" placeholder="http://host:port или http://user:pass@host:port">
       </div>
-      <div class="modal-note">⚠ Изменения аккаунта вступят в силу после перезапуска бота</div>
-      <div class="modal-note">🔒 Ключ хранится в bot_config.json на сервере в открытом виде — убедись что доступ к серверу защищён</div>
+      <div class="modal-note" data-i18n="note_restart">⚠ Изменения аккаунта вступят в силу после перезапуска бота</div>
+      <div class="modal-note" data-i18n="note_key_stored">🔒 Ключ хранится в bot_config.json на сервере в открытом виде — убедись что доступ к серверу защищён</div>
     </div>
 
     <div class="modal-section">
-      <div class="modal-section-title">Безопасность</div>
+      <div class="modal-section-title" data-i18n="section_security">Безопасность</div>
       <div class="modal-field">
-        <label>Пароль для UI (оставь пустым — без защиты)</label>
-        <input id="cfg-ui-password" type="password" placeholder="Придумай пароль">
+        <label data-i18n="lbl_ui_password">Пароль для UI (оставь пустым — без защиты)</label>
+        <input id="cfg-ui-password" type="password" data-i18n-ph="ph_ui_password" placeholder="Придумай пароль">
       </div>
     </div>
 
     <div class="modal-section">
-      <div class="modal-section-title">Telegram уведомления</div>
+      <div class="modal-section-title" data-i18n="section_telegram">Telegram уведомления</div>
       <div class="modal-field">
         <label>Bot Token</label>
         <input id="cfg-tg-token" type="text" placeholder="1234567890:AAF...">
@@ -1554,8 +1749,8 @@ async function saveBotSettings() {
     </div>
 
     <div class="modal-actions">
-      <button class="btn-modal-save" onclick="saveBotSettings()">Сохранить</button>
-      <button class="btn-modal-cancel" onclick="closeBotSettings()">Отмена</button>
+      <button class="btn-modal-save" onclick="saveBotSettings()" data-i18n="btn_save_settings">Сохранить</button>
+      <button class="btn-modal-cancel" onclick="closeBotSettings()" data-i18n="btn_cancel">Отмена</button>
       <span class="modal-hint" id="cfg-hint"></span>
     </div>
   </div>

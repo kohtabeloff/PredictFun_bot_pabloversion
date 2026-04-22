@@ -1,483 +1,395 @@
-# PredictFun Liquidity Farming Bot
+# PredictFun Market-Making Bot
 
-Бот для фарминга ликвидности на [predict.fun](https://predict.fun?ref=1DD58). Автоматически выставляет лимитные ордера в стакан, зарабатывая очки ликвидности. Управляется через браузер.
+> 🇷🇺 [Русская версия](README_RU.md) | 🐦 [X @Red_Devil_74](https://x.com/Red_Devil_74) | 💼 [LinkedIn](https://www.linkedin.com/in/pavelbelovinvest/)
 
-> Обновления, стратегии и анонсы — канал автора: [@hubcryptocis](https://t.me/hubcryptocis)
+A market-making bot for [Predict.fun](https://predict.fun) prediction markets. It automatically places limit orders on both sides (YES / NO) of prediction markets, earning the spread between bids and asks.
 
----
+**How it works:** the bot continuously monitors the orderbook, places limit orders near the mid price, and repositions them when the market moves. You earn the spread when your orders get filled.
 
-## ⚠️ Отказ от ответственности
-
-Этот бот предоставляется бесплатно, как есть. Автор **не несёт ответственности** за потерю средств, технические сбои, изменения в API платформы или любые другие последствия использования бота. Вы действуете на свой страх и риск.
-
-**Рекомендация:** перед использованием прогони код через любую нейросеть (ChatGPT, Claude, Gemini) и попроси проверить его на безопасность и корректность. Это займёт 5 минут и даст дополнительную уверенность.
+The bot runs on a VPS server and has a web dashboard — you manage everything through a browser, no command line needed after setup.
 
 ---
 
-## Помощь с настройкой
+## ⚠️ Disclaimer
 
-Если что-то не получается — открой [Claude Code](https://claude.ai/code) или [ChatGPT](https://chatgpt.com) прямо в папке с ботом. Нейросеть поможет разобраться с любым шагом установки, объяснит ошибки и подскажет как их исправить.
+This bot is provided free of charge, as is. The author **takes no responsibility** for loss of funds, technical failures, API changes on Predict.fun, or any other consequences of using the bot. Prediction market trading involves risk — you act at your own discretion.
 
----
-
-## Содержание
-
-1. [Что понадобится](#1-что-понадобится)
-2. [Покупка VPS](#2-покупка-vps)
-3. [Получение данных predict.fun](#3-получение-данных-predictfun)
-4. [Установка бота на VPS](#4-установка-бота-на-vps)
-5. [Автозапуск при перезагрузке сервера](#5-автозапуск-при-перезагрузке-сервера)
-6. [Мульти-аккаунт (несколько ботов на одном сервере)](#6-мульти-аккаунт-несколько-ботов-на-одном-сервере)
-7. [Запуск](#7-запуск)
-8. [Парсер маркетов](#8-парсер-маркетов)
-9. [Как пользоваться ботом](#9-как-пользоваться-ботом)
-10. [Основные параметры](#10-основные-параметры)
+**Recommendation:** before using, paste the code into any AI (ChatGPT, Claude, Gemini) and ask it to review for safety and correctness. Takes 5 minutes and gives extra confidence.
 
 ---
 
-## 1. Что понадобится
+## Getting help
 
-- VPS сервер (Linux, Ubuntu 22.04+)
-- Аккаунт на [predict.fun](https://predict.fun?ref=1DD58)
-- API ключ от predict.fun (как получить — в разделе 3)
-- Стартовый капитал: от ~$150
+If something doesn't work — open [Claude Code](https://claude.ai/code) or [ChatGPT](https://chatgpt.com) directly in the bot folder. The AI will help with any installation step, explain errors, and suggest fixes.
 
 ---
 
-## 2. Покупка VPS
+## Table of Contents
 
-VPS — это удалённый сервер в интернете, на котором бот будет работать круглосуточно. Без него бот будет работать только пока открыт твой компьютер.
+1. [What you need](#1-what-you-need)
+2. [Getting a VPS](#2-getting-a-vps)
+3. [Getting credentials from Predict.fun](#3-getting-credentials-from-predictfun)
+4. [Installing the bot on VPS](#4-installing-the-bot-on-vps)
+5. [Configuring the bot](#5-configuring-the-bot)
+6. [Running](#6-running)
+7. [Auto-start on reboot](#7-auto-start-on-reboot)
+8. [How to use](#8-how-to-use)
+9. [Settings reference](#9-settings-reference)
 
-### Минимальные требования
+---
 
-| Параметр | Минимум |
-|----------|---------|
+## 1. What you need
+
+- VPS server (Linux, Ubuntu 22.04+)
+- A [Predict.fun](https://predict.fun) account with funds deposited
+- Starting capital: ~$50–100 (you can start smaller, but spread market-making works better with more depth)
+
+---
+
+## 2. Getting a VPS
+
+A VPS is a remote server that runs your bot 24/7. Without it, the bot only works while your computer is on.
+
+### Minimum requirements
+
+| Parameter | Minimum |
+|-----------|---------|
 | CPU | 1 vCPU |
 | RAM | 1 GB |
-| Диск | 10 GB SSD |
-| ОС | Ubuntu 22.04 LTS |
-| Python | 3.11+ |
+| Disk | 10 GB SSD |
+| OS | Ubuntu 22.04 LTS |
+| Python | 3.10+ |
 
-> **Важно:** выбирай сервер **за пределами России** (Нидерланды, Финляндия, Германия) — некоторые платформы блокируют российские IP.
+### Where to buy
 
-### Где купить (оплата картой РФ или криптой)
+- **[Aeza.net](https://aeza.net)** ⭐ — great price, crypto accepted, fast setup
+- **[HiHoster](https://hihoster.com)** ⭐ — solid option, crypto accepted
+- **[Hetzner](https://www.hetzner.com/)** — reliable, affordable European servers
+- **[DigitalOcean](https://www.digitalocean.com/)** — beginner-friendly
 
-- **[HiP Hosting](https://hip.hosting/?code=e7ba57714b589e715371)** ⭐ — лучшее соотношение цена/мощность. Принимает **крипту**. Серверы бывают не всегда в наличии — нужно периодически проверять и успевать взять, но это вполне реально
-- **[Beget](https://beget.com/p2553787)** — карты РФ, серверы в Европе, тариф «Минимальный» подойдёт
-- **[Aeza](https://aeza.net/?ref=814571)** — крипта, серверы в Европе
-- **[TimeWeb Cloud](https://timeweb.cloud/r/ce50036)** — карты РФ, есть локации за рубежом
-- **[Hostkey](https://hostkey.ru)** — карты РФ, серверы в Европе
+### Connecting to the server
 
----
+After purchasing you'll receive an IP address, login, and password. Connect via SSH.
 
-## 3. Получение данных predict.fun
-
-Для работы бота нужны три вещи: API ключ, адрес кошелька и приватный ключ.
-
-### API ключ
-
-API ключи выдаются вручную через Discord predict.fun:
-
-1. Зайди в [Discord predict.fun](https://discord.gg/predictdotfun)
-2. Найди канал **#support-ticket** и создай тикет
-3. Запроси API ключ, указав адрес своего кошелька
-4. Сохрани полученный ключ
-
-### Адрес кошелька (Predict Account Address)
-
-Это твой публичный адрес на платформе predict.fun — тот, который отображается в профиле (начинается на `0x...`).
-
-### Приватный ключ (Private Key)
-
-1. Зайди на [predict.fun](https://predict.fun?ref=1DD58)
-2. Открой **Settings** (настройки аккаунта)
-3. Найди раздел **Export Private Key** и экспортируй ключ
-4. Сохрани его в надёжном месте — он понадобится для настройки бота
-
-> ⚠️ **Никому не передавай приватный ключ.** Кто владеет им — владеет кошельком.
-
----
-
-## 4. Установка бота на VPS
-
-### Подключение к серверу
-
-После покупки VPS тебе дадут IP-адрес, логин и пароль. Подключиться к серверу нужно через SSH.
-
-**Mac / Linux** — открой Терминал и введи:
+**Mac / Linux** — open Terminal:
 ```bash
-ssh root@ВАШ_IP
+ssh root@YOUR_IP
 ```
-Введи пароль когда попросит (при вводе символы не отображаются — это нормально).
+Enter the password when prompted (characters won't show while typing — that's normal).
 
-**Windows** — открой PowerShell (Win+R → powershell) и введи ту же команду. Либо скачай [PuTTY](https://putty.org).
+**Windows** — open PowerShell (Win+R → `powershell`) and run the same command. Or use [PuTTY](https://putty.org).
 
-> 💡 Если не получается — спроси у нейросети: «как подключиться к VPS по SSH с Windows/Mac».
+> If stuck — ask an AI: "how to connect to VPS via SSH from Windows/Mac".
 
 ---
 
-После подключения выполняй команды по одной:
+## 3. Getting credentials from Predict.fun
 
-### Обновление системы
+You need three things from Predict.fun: an API key, your account address, and a private key.
+
+### API Key
+
+API keys are issued manually through the Predict.fun Discord:
+
+1. Join the [Predict.fun Discord](https://discord.gg/predictdotfun)
+2. Find the **#support-ticket** channel and open a ticket
+3. Request an API key, including your wallet address in the message
+4. Save the key once received
+
+### Account Address
+
+This is your public address on Predict.fun — the one shown in your profile (starts with `0x...`).
+
+### Private Key (Privy Wallet)
+
+Predict.fun uses [Privy](https://privy.io) embedded wallets. To export your private key:
+
+1. Go to [predict.fun](https://predict.fun) and open **Settings**
+2. Find the **Export Private Key** section
+3. Follow the steps to reveal and copy your private key
+4. Store it somewhere safe — you'll need it to configure the bot
+
+> **Never share your private key with anyone.** Whoever has it controls the wallet.
+
+---
+
+## 4. Installing the bot on VPS
+
+Run these commands one by one after connecting to your server.
+
+### Update the system
 ```bash
 sudo apt update && sudo apt upgrade -y
 ```
 
-### Установка Python и Git
+### Install Python and Git
 ```bash
-sudo apt install python3.11 python3.11-venv python3-pip git -y
+sudo apt install python3 python3-venv python3-pip git -y
 ```
 
-### Скачивание бота
+### Download the bot
 ```bash
 cd ~
-git clone https://github.com/kohtabeloff/PredictFun_bot_pabloversion.git
-cd PredictFun_bot_pabloversion
+git clone https://github.com/kohtabeloff/PredictFun_bot_pabloversion.git predictfun_bot
+cd predictfun_bot
 ```
 
-### Создание виртуального окружения
+### Create virtual environment and install dependencies
 ```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-```
-
-### Установка зависимостей
-```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ---
 
-## 5. Автозапуск при перезагрузке сервера
+## 5. Configuring the bot
 
-Настрой автозапуск до первого запуска — тогда бот будет стартовать сам после любой перезагрузки VPS.
+Create the config file from the example:
+```bash
+cp bot_config.json.example bot_config.json
+nano bot_config.json
+```
 
-Создай файл сервиса:
+Or create it manually:
+```bash
+nano bot_config.json
+```
+
+Fill in the fields:
+
+```json
+{
+  "api_key": "your_api_key_from_predictfun",
+  "predict_account_address": "0x...",
+  "privy_wallet_private_key": "your_private_key",
+  "proxy": "",
+  "telegram_token": "",
+  "telegram_chat_id": "",
+  "ui_password": ""
+}
+```
+
+### Field descriptions
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `api_key` | Yes | API key from Predict.fun |
+| `predict_account_address` | Yes | Your account address (`0x...`) |
+| `privy_wallet_private_key` | Yes | Privy wallet private key for signing orders |
+| `proxy` | No | HTTP proxy if needed (format: `http://user:pass@host:port`) |
+| `telegram_token` | No | Telegram bot token for fill notifications (create via [@BotFather](https://t.me/BotFather)) |
+| `telegram_chat_id` | No | Your Telegram chat ID (get from [@userinfobot](https://t.me/userinfobot)) |
+| `ui_password` | No | Password to protect the web dashboard (leave empty to disable) |
+
+Save the file: `Ctrl+O`, then `Ctrl+X`.
+
+> **New account?** If you just registered on Predict.fun and haven't made any trades yet, the bot won't be able to connect. Manually buy shares in any market for any amount (even $1) first — this activates your account and the bot will work normally after that.
+
+---
+
+## 6. Running
+
+Make sure you're in the bot folder:
+```bash
+cd ~/predictfun_bot
+source venv/bin/activate
+```
+
+Start the bot in the background:
+```bash
+nohup venv/bin/python main.py >> logs/session.log 2>&1 &
+```
+
+Then open the web dashboard in your browser:
+```
+http://YOUR_SERVER_IP:8080
+```
+
+Replace `YOUR_SERVER_IP` with your actual server IP address.
+
+> The Manager dashboard (for managing multiple accounts) runs on port **8000**: `http://YOUR_SERVER_IP:8000`
+
+To stop the bot:
+```bash
+pkill -f main.py
+```
+
+To view logs:
+```bash
+tail -f ~/predictfun_bot/logs/session.log
+```
+
+---
+
+## 7. Auto-start on reboot
+
+This makes the bot restart automatically if the server reboots.
+
+Create a service file:
 ```bash
 sudo nano /etc/systemd/system/predictfun-bot.service
 ```
 
-Вставь содержимое (замени `ubuntu` на своего пользователя — если заходил как `root`, замени на `root` и пути соответственно):
+Paste the content (replace `YOUR_USER` with your login — usually `root`):
 
 ```ini
 [Unit]
-Description=PredictFun Liquidity Bot
+Description=PredictFun Market-Making Bot
 After=network.target
 
 [Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/PredictFun_bot_pabloversion
-ExecStart=/home/ubuntu/PredictFun_bot_pabloversion/.venv/bin/python main.py --autostart
+Type=simple
+User=YOUR_USER
+WorkingDirectory=/home/YOUR_USER/predictfun_bot
+ExecStart=/home/YOUR_USER/predictfun_bot/venv/bin/python main.py
 Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Сохрани (`Ctrl+O`, затем `Ctrl+X`) и активируй:
+If you're using the root user, replace `/home/YOUR_USER/predictfun_bot` with `/root/predictfun_bot`.
 
+Save (`Ctrl+O`, `Ctrl+X`) and enable:
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable predictfun-bot
 sudo systemctl start predictfun-bot
 ```
 
-Проверить что бот запущен:
+Check the status:
 ```bash
 sudo systemctl status predictfun-bot
 ```
 
-Просмотр логов:
+View logs:
 ```bash
-journalctl -u predictfun-bot -f
+sudo journalctl -u predictfun-bot -f
 ```
 
-> **Важно:** флаг `--autostart` в команде запуска обязателен — без него бот поднимется после перезагрузки, но не начнёт работать автоматически.
+### Also auto-start the Manager (port 8000)
 
----
-
-## 6. Мульти-аккаунт (несколько ботов на одном сервере)
-
-Бот поддерживает запуск нескольких инстансов с одной кодовой базы. Каждый инстанс работает со своей папкой данных и своим портом — обновлять код нужно только один раз.
-
-### Структура папок
-
-```
-PredictFun_bot_pabloversion/   ← один репозиторий
-data/
-  acc1/                        ← данные аккаунта 1 (bot_config.json, settings.json, logs/)
-  acc2/                        ← данные аккаунта 2
-```
-
-### Запуск ботов
+If you use the Manager dashboard, create a second service for it:
 
 ```bash
-# Аккаунт 1
-python main.py --port 8081 --data-dir ./data/acc1 --autostart
-
-# Аккаунт 2
-python main.py --port 8082 --data-dir ./data/acc2 --autostart
-```
-
-### Автозапуск через systemd
-
-Создай отдельный сервис для каждого аккаунта:
-
-```bash
-sudo nano /etc/systemd/system/predictfun-acc1.service
+sudo nano /etc/systemd/system/predictfun-manager.service
 ```
 
 ```ini
 [Unit]
-Description=PredictFun Bot acc1
+Description=PredictFun Manager Dashboard
 After=network.target
 
 [Service]
-User=ubuntu
-WorkingDirectory=/home/ubuntu/PredictFun_bot_pabloversion
-ExecStart=/home/ubuntu/PredictFun_bot_pabloversion/.venv/bin/python main.py --port 8081 --data-dir ./data/acc1 --autostart
+Type=simple
+User=YOUR_USER
+WorkingDirectory=/home/YOUR_USER/predictfun_bot
+ExecStart=/home/YOUR_USER/predictfun_bot/venv/bin/python run_manager.py
 Restart=always
-RestartSec=5
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 ```
 
-Повтори для `acc2` с портом `8082`. Затем:
-
+Then enable it:
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable predictfun-acc1 predictfun-acc2
-sudo systemctl start predictfun-acc1 predictfun-acc2
-```
-
-### Прокси — разные IP для каждого аккаунта
-
-Если несколько ботов работают на одном сервере, predict.fun видит их с одного IP — это может привести к блокировке или другим проблемам. Решение: назначить каждому боту отдельный прокси.
-
-Прокси указывается в настройках бота (⚙) — поле **Прокси**. Формат:
-
-```
-http://host:port
-http://user:pass@host:port
-```
-
-Прокси применяется ко всем запросам бота: REST API и WebSocket. Каждый аккаунт получает свой IP.
-
-> Работает только HTTP-прокси. SOCKS5 не поддерживается. Прокси у поставщика обычно стоят $1–3/мес за штуку.
-
----
-
-### Менеджер — общий дашборд
-
-Для удобного просмотра всех ботов в одном месте запусти менеджер:
-
-```bash
-python run_manager.py
-# → http://localhost:8000
-```
-
-Менеджер показывает статус каждого бота, баланс, количество маркетов и ордеров. Кнопка **↗ Открыть UI** открывает полный интерфейс нужного бота в новой вкладке.
-
-Список ботов хранится в `manager.json` — можно редактировать прямо из интерфейса менеджера или вручную:
-
-```json
-{
-  "bots": [
-    {"id": "acc1", "name": "Аккаунт 1", "port": 8081},
-    {"id": "acc2", "name": "Аккаунт 2", "port": 8082}
-  ]
-}
-```
-
-Для автозапуска менеджера добавь ещё один сервис с командой:
-```
-python run_manager.py --port 8000
+sudo systemctl enable predictfun-manager
+sudo systemctl start predictfun-manager
 ```
 
 ---
 
-## 7. Запуск
+## 8. How to use
 
-Если настроил автозапуск через systemd (раздел 5) — бот уже запущен. Просто открой браузер.
+### Dashboard overview
 
-Если хочешь запустить вручную:
-```bash
-source .venv/bin/activate
-python main.py
-```
+Open `http://YOUR_SERVER_IP:8080` in your browser. The main controls are:
 
-Открой браузер и перейди по адресу:
+| Element | What it does |
+|---------|-------------|
+| **START** | Connects the bot to Predict.fun API and WebSocket |
+| **Add Markets** | Add markets by ID |
+| **Global Settings** | Set parameters for all markets at once |
+| **Run All** | Start placing orders on all markets |
+| **▶ / ⏸** | Start or pause an individual market |
+| **Cancel All Orders** | Withdraw all active orders from the book — bot pauses briefly then repositions |
+| **Remove All Markets** | Clear the market list entirely |
+| **Export List** | Download all market IDs as a `.txt` file |
+| **Manager** | Open the multi-account dashboard (port 8000) |
+| **⚙** | Account settings (API key, address, private key, Telegram) |
 
-```
-http://ВАШ_IP:8080
-```
+### Workflow
 
-> Если запускаешь на своём компьютере (не VPS) — открой `http://localhost:8080`
+1. Press **START** — the bot connects and restores your saved markets (paused by default)
+2. Click **Add Markets**, paste market IDs — they'll be added in a paused state so you can configure them first
+3. In **Global Settings**, set your order size, spread, and other parameters — click **Apply to All**
+4. Press **Run All** — the bot starts placing orders
+5. Watch the **Logs** tab to see what the bot is doing in real time
 
-### Первоначальная настройка
+### Manager (port 8000)
 
-1. Нажми шестерёнку **⚙** в правом верхнем углу
-2. Заполни поля:
-   - **API Key** — ключ, полученный в Discord
-   - **Account Address** — адрес кошелька (`0x...`)
-   - **Private Key** — экспортированный приватный ключ (`0x...`)
-   - **Telegram Chat ID** — опционально, для уведомлений (как получить — в разделе 8)
-3. Сохрани настройки
-4. Нажми кнопку **СТАРТ** — бот подключится к API и WebSocket predict.fun
+If you run the bot for multiple accounts, open `http://YOUR_SERVER_IP:8000` to see all accounts in one place — balances, active markets, and status at a glance. Each account's full UI opens in a new tab.
 
-> ⚠️ **Новый аккаунт?** Если ты только что зарегистрировался на predict.fun и не совершал ни одной сделки — бот не сможет начать работу. Нужно вручную купить акцию любого события на любую сумму (хоть $1). После этого аккаунт активируется и бот заработает в штатном режиме.
+The list of bots is stored in `manager.json` and can be edited from the Manager interface or manually.
 
----
+### Telegram notifications (optional)
 
-## 8. Парсер маркетов
+When configured, the bot sends a Telegram message whenever an order gets filled — including the result of the automatic position sell.
 
-Прежде чем добавить маркеты в бота, их нужно выгрузить с predict.fun через отдельный инструмент — **PredictFun Parser**.
+To set it up:
+1. Create a bot via [@BotFather](https://t.me/BotFather) — it'll give you a token
+2. Get your chat ID from [@userinfobot](https://t.me/userinfobot)
+3. Enter both into `bot_config.json` (`telegram_token` and `telegram_chat_id`)
 
-Парсер запускается **на твоём компьютере** (не на VPS) — чтобы получить актуальный список маркетов.
+### Proxy support
 
-### Установка парсера
-
-Открой терминал на своём компьютере:
-
-**Mac / Linux:**
-```bash
-cd ~
-git clone https://github.com/kohtabeloff/PredictFun-Parser.git
-cd PredictFun-Parser
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-**Windows** (PowerShell):
-```powershell
-cd ~
-git clone https://github.com/kohtabeloff/PredictFun-Parser.git
-cd PredictFun-Parser
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-### Запуск парсера
-
-**Mac / Linux:**
-```bash
-python3 main.py
-```
-
-**Windows:**
-```powershell
-python main.py
-```
-
-При первом запуске появится окно с запросом API ключа — введи его и нажми **Сохранить**. Ключ сохранится автоматически, при следующих запусках вводить не нужно.
-
-### Настройки в интерфейсе парсера
-
-**Источник маркетов**
-- *Все маркеты Predict.fun* — загружает полный список с платформы (рекомендуется)
-- *Мой список (файл с id)* — берёт ID из локального файла, если ты уже сохранял список раньше
-
-**Исключить маркеты с тегами**
-Галочки по категориям — отмечай те, которые хочешь **убрать** из результата. Например, если не хочешь фармить спортивные маркеты — поставь галочку *Sports*. Доступные категории: Sports, Politics, Crypto, Culture, Economy, NBA, Soccer, NFL, NHL, Esports, CS2, LoL, Cricket, Dota 2, Olympics, Finance, Oscars и др.
-
-**Дополнительные фильтры**
-- *Статус маркета* — по умолчанию стоит `REGISTERED` (активные маркеты). Обычно менять не нужно.
-- *Фильтр Polymarket / Kalshi* — оставляет только маркеты, которые одновременно есть на других крупных платформах (Polymarket, Kalshi). Такие маркеты обычно популярнее и ликвиднее.
-- *Мин. дней до конца* — доступно только вместе с фильтром Polymarket/Kalshi. Отсекает маркеты, которые закрываются слишком скоро.
-
-### Запуск и результат
-
-Нажми кнопку **Извлечь** — парсер загрузит маркеты с учётом всех настроек и сохранит список ID в файл **`result.txt`** (в той же папке).
-
-### Добавление маркетов в бота
-
-1. Открой файл `result.txt` — там список ID маркетов
-2. Выдели и скопируй нужные ID (можно все сразу — `Ctrl+A`, `Ctrl+C`)
-3. В интерфейсе бота нажми **Добавить маркеты**
-4. Вставь скопированные ID
-5. Нажми **Добавить**
-
-> Парсер стоит запускать периодически — маркеты на predict.fun появляются и закрываются. Раз в несколько дней обновляй список.
+If you run multiple accounts on one server, Predict.fun sees them all from the same IP. Assign each account a different proxy in the settings (⚙) — field **Proxy**. Format: `http://host:port` or `http://user:pass@host:port`.
 
 ---
 
-## 9. Как пользоваться ботом
+## 9. Settings reference
 
-### Основные кнопки
-
-| Элемент | Что делает |
-|---------|-----------|
-| **СТАРТ** | Запускает движок бота, подключается к API |
-| **Добавить маркеты** | Добавляет маркеты по ID |
-| **Общие настройки** | Устанавливает параметры сразу для всех маркетов |
-| **Запустить все** | Включает выставление ордеров на всех маркетах |
-| **▶ / ⏸** | Запустить / остановить отдельный маркет |
-| **Отменить все ордера** | Снимает все активные ордера из стакана — бот временно уходит с рынка, но продолжает следить за маркетами и выставит ордера заново при необходимости |
-| **Удалить все маркеты** | Полностью очищает список маркетов |
-| **⬇ Экспорт списка** | Скачивает все ID маркетов в `.txt` файл |
-| **⚡ Менеджер** | Открывает общий дашборд всех ботов |
-| **⚙** | Настройки аккаунта (API ключ, адрес, приватный ключ, Telegram) |
-
-### Рабочий процесс
-
-1. Нажми **СТАРТ** — бот подключается к платформе и восстанавливает сохранённые маркеты (в выключенном состоянии)
-2. Используй парсер (раздел 7) чтобы получить актуальные ID маркетов
-3. Нажми **Добавить маркеты**, вставь ID — маркеты добавятся выключенными, чтобы можно было сначала настроить
-4. Удали лишние маркеты кнопкой **🗑** на карточке
-5. В **Общих настройках** задай размер ордера, спред и другие параметры — нажми **Применить ко всем**
-6. Нажми **Запустить все** — бот начнёт выставлять ордера
-7. Для экспорта текущего списка маркетов — кнопка **⬇ Экспорт списка** в шапке (сохраняет ID в `.txt` файл)
-
-### Уведомления в Telegram (опционально)
-
-Если настроен Telegram, бот будет присылать уведомления когда ордер случайно исполнился (кто-то купил по твоей цене).
-
-Самый простой способ — использовать готового бота [@predictdotfun_trading_bot](https://t.me/predictdotfun_trading_bot):
-
-1. Открой [@predictdotfun_trading_bot](https://t.me/predictdotfun_trading_bot) в Telegram
-2. Нажми **Start**
-3. Узнай свой `chat_id`: напиши [@userinfobot](https://t.me/userinfobot) — он ответит твоим ID
-4. Введи chat_id в настройках бота (⚙) — поле **Chat ID**
-5. В поле **Telegram Bot Token** введи токен бота `@predictdotfun_trading_bot` (он указан при старте бота)
-
-### Автопродажа при исполнении ордера
-
-Если лимитка случайно исполнилась — бот автоматически продаёт позицию по рыночной цене и отправляет уведомление в Telegram с результатом продажи.
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Position USDT** | — | Size of each order placed by the bot, in USDT |
+| **Target liquidity ($)** | — | Minimum USD depth in the orderbook required before the bot places orders. Helps avoid thin markets. |
+| **Min orders before** | 0 (off) | Minimum number of orders ahead of yours in the queue. Set to 0 to disable. |
+| **Max auto-spread (%)** | 6% | Maximum distance from the mid price the bot will place orders. Wider = more fill chance, more risk. |
+| **Min spread (¢)** | 0.2¢ | Minimum distance from mid price in cents. Prevents placing orders too close to the current price. |
+| **Liquidity mode** | BID | `BID` — standard mode. `ASK` — alternative liquidity mode. |
+| **Side** | Both | Which side to make markets on: `Both`, `YES only`, or `NO only`. |
+| **Reposition limit** | 0 (off) | Max number of repositions within the volatility window before cooldown kicks in. Set to 0 to disable. |
+| **Volatility window (sec)** | — | Time window in seconds for counting repositions. |
+| **Volatility cooldown (sec)** | — | How long the bot pauses after hitting the reposition limit. |
 
 ---
 
-## 10. Основные параметры
+## Tips
 
-| Параметр | Описание |
-|----------|---------|
-| **Позиция USDT** | Размер каждого ордера в USDT |
-| **Целевая ликвидность** | Суммарная глубина стакана, которую бот держит |
-| **Макс. авто-спред** | Максимальное расстояние от мид-цены (%) |
-| **Мин. спред** | Минимальное расстояние от мид-цены (центы) |
-| **Сторона** | YES, NO или оба — на какой стороне стакана ставить ордера |
-| **Мин. ордеров перед** | Сколько чужих ордеров должно быть перед позицией бота |
-| **Волатильность: лимит переставлений** | Сколько раз ордер может переставиться за окно времени до отступа (0 = выключено) |
-| **Волатильность: окно (сек)** | Временное окно для подсчёта переставлений |
-| **Волатильность: кулдаун (сек)** | Пауза после срабатывания защиты от волатильности |
+**Start small.** Run your first markets with a minimum order size. Make sure the bot correctly places and repositions orders before scaling up.
+
+**Don't add too many markets at once.** Start with 10–20, check that everything is stable, then expand.
+
+**Pick active markets.** The bot earns when orders get filled. Choose markets with actual trading volume — thin markets with no activity won't generate fills.
+
+**Volatility protection matters.** In fast-moving markets, the bot can reposition many times in a row, paying fees each time. Set the reposition limit and volatility window to protect yourself.
+
+**Use a UI password.** If your VPS is publicly accessible, set a `ui_password` in `bot_config.json` so only you can access the dashboard.
 
 ---
 
-## Рекомендации
+## Updates and contacts
 
-**Начинай с малого.** Первые маркеты запускай с минимальным размером ордера — убедись что бот корректно выставляет и переставляет ордера. Только после этого увеличивай суммы.
+Follow for bot updates, strategies, and insights:
 
-**Не добавляй слишком много маркетов сразу.** Начни с 10–20, проверь стабильность работы, затем масштабируй.
+- 🐦 X (Twitter): [@Red_Devil_74](https://x.com/Red_Devil_74)
+- 💼 LinkedIn: [pavelbelovinvest](https://www.linkedin.com/in/pavelbelovinvest/)
 
-**Обновляй список маркетов.** Запускай парсер раз в несколько дней — старые маркеты закрываются, появляются новые.
+Support the author:
 
----
-
-## Вопросы и обновления
-
-Канал автора — обновления бота, стратегии, анонсы: [@hubcryptocis](https://t.me/hubcryptocis)
+- EVM: `0xA3aCe3905fb080930f7Eeac9Fe401F5B41b16629`
+- SOL: `5UztCBoUq2HvtH5nibLmWgxuR5fU5AeagkX9mqdXa5Pq`
