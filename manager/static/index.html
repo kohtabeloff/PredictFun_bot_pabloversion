@@ -138,9 +138,28 @@
       <label>ID (латиница, без пробелов)</label>
       <input id="new-id" placeholder="bot1" />
     </div>
+    <div>
+      <label>Пароль UI (если задан в настройках бота)</label>
+      <input id="new-password" type="password" placeholder="Оставь пустым если нет пароля" />
+    </div>
     <div class="modal-actions">
       <button class="btn-modal-cancel" onclick="closeAddModal()">Отмена</button>
       <button class="btn-modal-save" onclick="addBot()">Добавить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Модал смены пароля -->
+<div class="modal-overlay" id="pwd-modal">
+  <div class="modal">
+    <h3>Пароль бота</h3>
+    <div>
+      <label>Пароль UI (оставь пустым чтобы убрать)</label>
+      <input id="pwd-input" type="password" placeholder="Новый пароль" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closePwdModal()">Отмена</button>
+      <button class="btn-modal-save" onclick="savePassword()">Сохранить</button>
     </div>
   </div>
 </div>
@@ -212,16 +231,19 @@
     if (!b.online) {
       actions = `
         <button class="btn btn-ghost" style="flex:1;cursor:default">Процесс не запущен</button>
+        <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="Пароль">🔑</button>
         <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
     } else if (b.running) {
       actions = `
         <button class="btn btn-open" onclick="openBot(${b.port})">↗ Открыть UI</button>
         <button class="btn btn-stop" onclick="proxyPost('${b.id}','api/bot/stop')">■ Стоп</button>
+        <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="Пароль">🔑</button>
         <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
     } else {
       actions = `
         <button class="btn btn-open" onclick="openBot(${b.port})">↗ Открыть UI</button>
         <button class="btn btn-start" onclick="proxyPost('${b.id}','api/bot/start')">▶ Старт</button>
+        <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="Пароль">🔑</button>
         <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
     }
 
@@ -270,20 +292,21 @@
   }
   function closeAddModal() {
     document.getElementById('add-modal').classList.remove('show');
-    ['new-name','new-port','new-id'].forEach(id => document.getElementById(id).value = '');
+    ['new-name','new-port','new-id','new-password'].forEach(id => document.getElementById(id).value = '');
   }
 
   async function addBot() {
     const name = document.getElementById('new-name').value.trim();
     const port = parseInt(document.getElementById('new-port').value);
     let id = document.getElementById('new-id').value.trim();
+    const password = document.getElementById('new-password').value.trim();
     if (!id) id = 'bot' + port;
     if (!port) { alert('Укажи порт'); return; }
     try {
       const r = await fetch('/api/bots', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id, name, port }),
+        body: JSON.stringify({ id, name, port, password }),
       });
       if (!r.ok) { const e = await r.json(); alert(e.detail || 'Ошибка'); return; }
       closeAddModal();
@@ -291,16 +314,47 @@
     } catch (e) { alert('Ошибка: ' + e); }
   }
 
-  // Закрытие модала по клику вне
+  // ─── Модал пароля ───
+  let _pwdBotId = null;
+  function openPwdModal(botId) {
+    _pwdBotId = botId;
+    document.getElementById('pwd-input').value = '';
+    document.getElementById('pwd-modal').classList.add('show');
+    setTimeout(() => document.getElementById('pwd-input').focus(), 50);
+  }
+  function closePwdModal() {
+    document.getElementById('pwd-modal').classList.remove('show');
+    _pwdBotId = null;
+  }
+  async function savePassword() {
+    const password = document.getElementById('pwd-input').value.trim();
+    try {
+      await fetch(`/api/bots/${_pwdBotId}/password`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      closePwdModal();
+      refresh();
+    } catch (e) { alert('Ошибка: ' + e); }
+  }
+
+  // Закрытие модалов по клику вне
   document.getElementById('add-modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeAddModal();
   });
+  document.getElementById('pwd-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closePwdModal();
+  });
 
   // Enter в полях модала
-  ['new-name','new-port','new-id'].forEach(id => {
+  ['new-name','new-port','new-id','new-password'].forEach(id => {
     document.getElementById(id).addEventListener('keydown', e => {
       if (e.key === 'Enter') addBot();
     });
+  });
+  document.getElementById('pwd-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') savePassword();
   });
 
   function escHtml(s) {

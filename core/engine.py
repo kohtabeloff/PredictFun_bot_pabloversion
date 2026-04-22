@@ -51,6 +51,8 @@ class BotEngine:
         self.ws_connected = False
         self._guard_failures: dict[str, int] = {}  # order_id -> consecutive fail count
         self._global_defaults: dict = {}  # настройки по умолчанию для новых маркетов
+        self._bootstrap_trigger: asyncio.Event = asyncio.Event()
+        self._bootstrap_fails: dict[str, int] = {}  # market_id -> кол-во неудачных попыток
 
     # ─────────────────────────────────────────────────────────────────────────
     # Старт / стоп
@@ -207,6 +209,7 @@ class BotEngine:
                     results[mid] = f"error: статус {info.get('status')} (нужен REGISTERED)"
                     continue
                 self._market_info_cache[mid] = info
+                self._bootstrap_fails.pop(mid, None)
                 await self._start_worker(mid)
                 if force_disabled:
                     worker = self._workers.get(mid)
@@ -215,6 +218,8 @@ class BotEngine:
                 results[mid] = "ok"
             except Exception as e:
                 results[mid] = f"error: {e}"
+        if any(v == "ok" for v in results.values()):
+            self._bootstrap_trigger.set()
         return results
 
     async def remove_market(self, market_id: str) -> bool:
@@ -549,53 +554,80 @@ class BotEngine:
 
     async def _bootstrap_orderbooks_loop(self):
         """Подтягивает стартовые snapshots для маркетов, по которым WS ещё не прислал стакан."""
+        _BOOTSTRAP_MAX_FAILS = 15   # после 15 неудач (~15 мин) перестаём пробовать
+        _BOOTSTRAP_BATCH = 50       # маркетов на одно WS-соединение
+        _BOOTSTRAP_TIMEOUT = 12.0   # секунд ждём snapshots в одном batch
+
         await asyncio.sleep(5)
         while self.running:
             try:
+                # Ждём триггера (новые маркеты добавлены) или таймаута 30 сек
+                try:
+                    await asyncio.wait_for(self._bootstrap_trigger.wait(), timeout=30.0)
+                except asyncio.TimeoutError:
+                    pass
+                self._bootstrap_trigger.clear()
+
                 if not self.ws or not self.ws.connected:
                     await asyncio.sleep(5)
                     continue
 
                 missing = [
                     worker for worker in self._workers.values()
-                    if worker.settings.enabled and worker.last_orderbook is None
+                    if (worker.settings.enabled
+                        and worker.last_orderbook is None
+                        and self._bootstrap_fails.get(worker.market_id, 0) < _BOOTSTRAP_MAX_FAILS)
                 ]
                 if not missing:
-                    await asyncio.sleep(30)
                     continue
 
                 self.logger.log(f"[Bootstrap] Нет стакана для {len(missing)} маркетов, запрашиваю snapshot")
-                await self.ws.subscribe_many([worker.market_id for worker in missing], batch_size=20, pause_sec=0.25)
+                await self.ws.subscribe_many([w.market_id for w in missing], batch_size=20, pause_sec=0.25)
                 await asyncio.sleep(2)
 
-                still_missing = [worker for worker in missing if worker.last_orderbook is None]
+                still_missing = [w for w in missing if w.last_orderbook is None]
                 if not still_missing:
-                    await asyncio.sleep(30)
                     continue
 
-                sem = asyncio.Semaphore(8)
-
-                async def _bootstrap_one(worker: MarketWorker):
-                    async with sem:
-                        snapshot = await self.ws.fetch_snapshot(worker.market_id, timeout=8.0)
-                        if snapshot:
+                # Batch-fetch: одно WS-соединение на _BOOTSTRAP_BATCH маркетов
+                for i in range(0, len(still_missing), _BOOTSTRAP_BATCH):
+                    batch = still_missing[i:i + _BOOTSTRAP_BATCH]
+                    snapshots = await self.ws.fetch_snapshots_batch(
+                        [w.market_id for w in batch], timeout=_BOOTSTRAP_TIMEOUT
+                    )
+                    for worker in batch:
+                        ob = snapshots.get(worker.market_id)
+                        if ob:
+                            self._bootstrap_fails.pop(worker.market_id, None)
                             try:
-                                worker.queue.put_nowait(snapshot)
+                                worker.queue.put_nowait(ob)
                             except asyncio.QueueFull:
                                 try:
                                     worker.queue.get_nowait()
                                 except asyncio.QueueEmpty:
                                     pass
                                 try:
-                                    worker.queue.put_nowait(snapshot)
+                                    worker.queue.put_nowait(ob)
                                 except asyncio.QueueFull:
                                     pass
+                        else:
+                            self._bootstrap_fails[worker.market_id] = (
+                                self._bootstrap_fails.get(worker.market_id, 0) + 1
+                            )
 
-                await asyncio.gather(*[_bootstrap_one(worker) for worker in still_missing], return_exceptions=True)
+                # Логируем маркеты, которые сдались
+                gave_up = [
+                    w.market_id for w in still_missing
+                    if self._bootstrap_fails.get(w.market_id, 0) >= _BOOTSTRAP_MAX_FAILS
+                ]
+                if gave_up:
+                    self.logger.log(
+                        f"[Bootstrap] Нет активности в стакане, пропускаем {len(gave_up)} маркет(ов): "
+                        + ", ".join(gave_up[:10]) + ("..." if len(gave_up) > 10 else "")
+                    )
+
             except Exception as e:
                 self.logger.log(f"[Bootstrap] ✗ {e}")
-
-            await asyncio.sleep(30)
 
     async def _send_telegram(self, message: str):
         from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID

@@ -224,7 +224,7 @@ async def _restore_saved_markets(engine):
         return
     ids = list(saved.keys())
     engine.logger.log(f"Восстановление {len(ids)} маркетов из settings.json...")
-    results = await engine.add_markets(ids, force_disabled=True)
+    results = await engine.add_markets(ids)
     ok = sum(1 for v in results.values() if v in ("ok", "already_exists"))
     err = [mid for mid, v in results.items() if "error" in str(v)]
     engine.logger.log(f"Восстановлено {ok} маркетов" + (f", ошибки: {', '.join(err)}" if err else ""))

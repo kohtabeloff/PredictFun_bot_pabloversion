@@ -82,6 +82,54 @@ class PredictWebSocket:
             return market_id, ob
         return None
 
+    async def fetch_snapshots_batch(self, market_ids: list[str], timeout: float = 15.0) -> dict[str, dict]:
+        """Получает snapshots для нескольких маркетов через одно WS-соединение."""
+        if not market_ids:
+            return {}
+        results: dict[str, dict] = {}
+        remaining = set(str(mid) for mid in market_ids)
+        try:
+            async with asyncio.timeout(timeout):
+                ws_kwargs: dict = {"heartbeat": 10.0}
+                if self._proxy:
+                    ws_kwargs["proxy"] = self._proxy
+                async with aiohttp.ClientSession() as session:
+                    async with session.ws_connect(self._url, **ws_kwargs) as ws:
+                        for mid in list(remaining):
+                            msg = {
+                                "method": "subscribe",
+                                "requestId": f"bootstrap-{mid}",
+                                "params": [f"predictOrderbook/{mid}"],
+                            }
+                            await ws.send_str(json.dumps(msg))
+                        async for message in ws:
+                            if not remaining:
+                                break
+                            if message.type == aiohttp.WSMsgType.TEXT:
+                                try:
+                                    data = json.loads(message.data)
+                                except json.JSONDecodeError:
+                                    continue
+                                if data.get("type") == "R":
+                                    continue
+                                if data.get("topic") == "heartbeat":
+                                    try:
+                                        await ws.send_str(json.dumps({"method": "heartbeat", "data": data.get("data")}))
+                                    except Exception:
+                                        pass
+                                    continue
+                                extracted = self._extract_orderbook_message(data)
+                                if extracted:
+                                    mid, ob = extracted
+                                    if mid in remaining:
+                                        results[mid] = ob
+                                        remaining.discard(mid)
+                            elif message.type in (aiohttp.WSMsgType.ERROR, aiohttp.WSMsgType.CLOSE):
+                                break
+        except Exception:
+            pass
+        return results
+
     async def fetch_snapshot(self, market_id: str, timeout: float = 8.0) -> dict | None:
         """Одноразово получает snapshot стакана через отдельное WS-подключение."""
         try:

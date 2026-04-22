@@ -14,7 +14,7 @@ from core.order_manager import OrderManager
 from models import MarketSettings, OrderRecord, OrderCalculation, MarketState
 
 
-REPOSITION_THRESHOLD = 0.001  # минимальный сдвиг цены для переставления
+REPOSITION_THRESHOLD = 0.005  # минимальный сдвиг цены для переставления
 
 
 class MarketWorker:

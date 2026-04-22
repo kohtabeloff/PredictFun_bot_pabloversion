@@ -5,6 +5,7 @@ PredictFun Manager — дашборд для управления несколь
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
 from pathlib import Path
@@ -40,6 +41,22 @@ def get_bot_url(bot_id: str) -> str:
     raise HTTPException(404, f"Бот '{bot_id}' не найден в manager.json")
 
 
+def _get_bot_cfg(bot_id: str) -> dict:
+    cfg = load_config()
+    for bot in cfg["bots"]:
+        if bot["id"] == bot_id:
+            return bot
+    raise HTTPException(404, f"Бот '{bot_id}' не найден в manager.json")
+
+
+def _auth_headers(bot_cfg: dict) -> dict:
+    password = bot_cfg.get("password", "")
+    if not password:
+        return {}
+    encoded = base64.b64encode(f"admin:{password}".encode()).decode()
+    return {"Authorization": f"Basic {encoded}"}
+
+
 # ── Фронтенд ─────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
@@ -67,7 +84,10 @@ async def list_bots():
                 "orders_count": 0,
             }
             try:
-                r = await client.get(f"http://localhost:{bot['port']}/api/state")
+                r = await client.get(
+                    f"http://localhost:{bot['port']}/api/state",
+                    headers=_auth_headers(bot),
+                )
                 if r.status_code == 200:
                     state = r.json()
                     entry["online"] = True
@@ -88,14 +108,35 @@ async def add_bot(request: Request):
     bot_id = body.get("id", "").strip()
     name = body.get("name", "").strip()
     port = int(body.get("port", 0))
+    password = body.get("password", "").strip()
     if not bot_id or not port:
         raise HTTPException(400, "Нужны id и port")
     cfg = load_config()
     if any(b["id"] == bot_id for b in cfg["bots"]):
         raise HTTPException(409, f"Бот '{bot_id}' уже существует")
-    cfg["bots"].append({"id": bot_id, "name": name or bot_id, "port": port})
+    entry: dict = {"id": bot_id, "name": name or bot_id, "port": port}
+    if password:
+        entry["password"] = password
+    cfg["bots"].append(entry)
     save_config(cfg)
     return {"ok": True}
+
+
+@app.put("/api/bots/{bot_id}/password")
+async def set_bot_password(bot_id: str, request: Request):
+    """Обновить пароль бота."""
+    body = await request.json()
+    password = body.get("password", "").strip()
+    cfg = load_config()
+    for bot in cfg["bots"]:
+        if bot["id"] == bot_id:
+            if password:
+                bot["password"] = password
+            else:
+                bot.pop("password", None)
+            save_config(cfg)
+            return {"ok": True}
+    raise HTTPException(404, f"Бот '{bot_id}' не найден")
 
 
 @app.delete("/api/bots/{bot_id}")
@@ -134,10 +175,11 @@ async def rename_bot(bot_id: str, request: Request):
 )
 async def proxy_request(bot_id: str, path: str, request: Request):
     """Проксирует любой API-запрос к нужному боту."""
-    base_url = get_bot_url(bot_id)
+    bot_cfg = _get_bot_cfg(bot_id)
+    base_url = f"http://localhost:{bot_cfg['port']}"
     url = f"{base_url}/{path}"
     body = await request.body()
-    headers = {}
+    headers = _auth_headers(bot_cfg)
     if request.headers.get("content-type"):
         headers["content-type"] = request.headers["content-type"]
     try:
@@ -163,8 +205,23 @@ async def proxy_request(bot_id: str, path: str, request: Request):
 @app.websocket("/ws/proxy/{bot_id}")
 async def ws_proxy(bot_id: str, websocket: WebSocket):
     """Туннелирует WebSocket от браузера к нужному боту."""
-    base_url = get_bot_url(bot_id).replace("http://", "ws://")
-    ws_url = f"{base_url}/ws"
+    bot_cfg = _get_bot_cfg(bot_id)
+    base_url = f"http://localhost:{bot_cfg['port']}"
+    ws_url = f"ws://localhost:{bot_cfg['port']}/ws"
+
+    # Если бот с паролем — получаем одноразовый WS-токен
+    if bot_cfg.get("password"):
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.get(
+                    f"{base_url}/api/ws-token",
+                    headers=_auth_headers(bot_cfg),
+                )
+                token = r.json().get("token", "")
+            ws_url += f"?token={token}"
+        except Exception:
+            await websocket.close(code=4001, reason="Не удалось получить WS-токен")
+            return
 
     await websocket.accept()
 
