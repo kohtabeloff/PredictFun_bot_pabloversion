@@ -184,8 +184,9 @@ async def proxy_request(bot_id: str, path: str, request: Request):
     headers = _auth_headers(bot_cfg)
     if request.headers.get("content-type"):
         headers["content-type"] = request.headers["content-type"]
+    timeout = 300.0 if path == "api/markets" and request.method == "POST" else 30.0
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             r = await client.request(
                 method=request.method,
                 url=url,
