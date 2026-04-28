@@ -12,8 +12,10 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+
+from manager import parser_runner as pr
 
 STATIC_DIR = Path(__file__).parent / "static"
 MANAGER_CONFIG = Path(__file__).parent.parent / "manager.json"
@@ -202,6 +204,103 @@ async def proxy_request(bot_id: str, path: str, request: Request):
 
 # ── WebSocket прокси ──────────────────────────────────────────────────────────
 
+# ── Парсер маркетов ───────────────────────────────────────────────────────────
+
+@app.get("/api/parser/tags")
+async def parser_tags():
+    cfg = load_config()
+    api_key = cfg.get("parser_api_key", "").strip()
+    if api_key:
+        tags = await asyncio.get_running_loop().run_in_executor(None, pr.fetch_tags, api_key)
+    else:
+        tags = pr.TAGS_FALLBACK
+    return tags
+
+
+@app.get("/api/parser/config")
+async def parser_config():
+    cfg = load_config()
+    key = cfg.get("parser_api_key", "")
+    return {"has_key": bool(key), "key_hint": f"...{key[-4:]}" if len(key) >= 4 else ("" if not key else key)}
+
+
+@app.put("/api/parser/config")
+async def save_parser_config(request: Request):
+    body = await request.json()
+    api_key = body.get("api_key", "").strip()
+    cfg = load_config()
+    cfg["parser_api_key"] = api_key
+    save_config(cfg)
+    return {"ok": True}
+
+
+@app.post("/api/parser/run")
+async def run_parser(request: Request):
+    body = await request.json()
+    cfg = load_config()
+    api_key = (body.get("api_key") or cfg.get("parser_api_key", "")).strip()
+    if not api_key:
+        raise HTTPException(400, "API ключ не задан")
+
+    use_all = bool(body.get("use_all_markets", True))
+    raw_ids = body.get("market_ids") or []
+    try:
+        market_ids_input = [int(x) for x in raw_ids if str(x).strip()]
+    except ValueError:
+        raise HTTPException(400, "Некорректные market IDs")
+
+    exclude_tag_ids: list[str] = body.get("exclude_tag_ids") or []
+    exclude_tag_names: list[str] = body.get("exclude_tag_names") or []
+    require_status: str | None = body.get("require_status") or None
+    raw_days = body.get("min_days")
+    min_days: int | None = int(raw_days) if raw_days else None
+    use_kalshi: bool = bool(body.get("use_kalshi", False))
+
+    queue: asyncio.Queue = asyncio.Queue()
+    loop = asyncio.get_running_loop()
+
+    def step_cb(step: int, status: str, detail: str):
+        loop.call_soon_threadsafe(
+            queue.put_nowait,
+            {"type": "step", "step": step, "status": status, "detail": detail},
+        )
+
+    future = loop.run_in_executor(
+        None,
+        lambda: pr.run_pipeline(
+            api_key=api_key,
+            use_all_markets=use_all,
+            market_ids_input=market_ids_input if not use_all else None,
+            exclude_tag_ids=exclude_tag_ids,
+            exclude_tag_names=exclude_tag_names,
+            require_status=require_status,
+            min_days=min_days,
+            use_kalshi=use_kalshi,
+            step_callback=step_cb,
+        ),
+    )
+
+    async def generate():
+        while True:
+            done = future.done()
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=0.5)
+                yield f"data: {json.dumps(event)}\n\n"
+            except asyncio.TimeoutError:
+                if done:
+                    break
+                yield ": keepalive\n\n"
+
+        result, error = future.result()
+        yield f"data: {json.dumps({'type': 'done', 'ids': result, 'error': error})}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.websocket("/ws/proxy/{bot_id}")
 async def ws_proxy(bot_id: str, websocket: WebSocket):
     """Туннелирует WebSocket от браузера к нужному боту."""
@@ -226,7 +325,7 @@ async def ws_proxy(bot_id: str, websocket: WebSocket):
     await websocket.accept()
 
     try:
-        import websockets
+        import websockets  # noqa: PLC0415
         async with websockets.connect(ws_url) as upstream:
             async def client_to_upstream():
                 try:

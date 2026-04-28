@@ -336,6 +336,24 @@ If you run the bot for multiple accounts, open `http://YOUR_SERVER_IP:8000` to s
 
 The list of bots is stored in `manager.json` and can be edited from the Manager interface or manually.
 
+### Market Parser (built into Manager)
+
+The **Parser** tab in the Manager lets you find and filter markets from Predict.fun before adding them to a bot.
+
+**How it works:**
+1. Open the Manager → **Parser** tab
+2. Enter your Predict.fun API key (saved automatically after first use)
+3. Choose source: all markets or manual IDs
+4. Check the tag categories you want to **exclude** (e.g. Sports, Esports)
+5. Optional filters: market status, Polymarket/Kalshi cross-listing, minimum days until close
+6. Click **Run Parser** — progress is shown step by step in real time
+
+**With the results you can:**
+- **Add to bot** — sends markets directly to a bot; existing markets in the bot are kept
+- **Download .txt** — saves the ID list as a file for manual use
+
+> Re-run the parser every few days — markets open and close regularly.
+
 ### Telegram notifications (optional)
 
 When configured, the bot sends a Telegram message whenever an order gets filled — including the result of the automatic position sell.

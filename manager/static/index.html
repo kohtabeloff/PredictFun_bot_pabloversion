@@ -9,6 +9,7 @@
     :root {
       --bg: #1a1a2e; --card-bg: #16213e; --card-border: #0f3460;
       --card-border2: #1a3a70; --accent-green: #00d4aa; --accent-blue: #4da6ff;
+      --accent-orange: #F7931A;
       --red: #ff4757; --yellow: #ffa502; --text: #e0e0e0; --text2: #888;
       --header-bg: #111128; --input-bg: #0d1b3e;
     }
@@ -26,8 +27,16 @@
     .btn-lang { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .btn-lang:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
 
+    /* ─── TABS ─── */
+    .tabs-nav { background: var(--header-bg); border-bottom: 1px solid var(--card-border); display: flex; gap: 0; padding: 0 24px; position: sticky; top: 57px; z-index: 99; }
+    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text2); font-size: 13px; font-weight: 600; padding: 10px 18px; cursor: pointer; transition: color .15s, border-color .15s; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+
     /* ─── MAIN ─── */
     main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
     .section-title { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
 
     /* ─── SUMMARY ─── */
@@ -96,6 +105,95 @@
     /* ─── EMPTY ─── */
     .empty { text-align: center; color: var(--text2); padding: 60px 20px; font-size: 14px; }
     .empty .big { font-size: 40px; margin-bottom: 12px; }
+
+    /* ─── PARSER ─── */
+    .parser-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .parser-layout { grid-template-columns: 1fr; } }
+
+    .parser-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .parser-card h3 { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; }
+
+    .p-field { display: flex; flex-direction: column; gap: 5px; }
+    .p-field label { font-size: 12px; color: var(--text2); }
+    .p-input { background: var(--input-bg); border: 1px solid var(--card-border2); color: var(--text); border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none; width: 100%; }
+    .p-input:focus { border-color: var(--accent-blue); }
+    .p-input[type="number"] { width: 90px; }
+    textarea.p-input { resize: vertical; min-height: 80px; font-family: monospace; font-size: 12px; }
+
+    .p-radio-group { display: flex; gap: 12px; }
+    .p-radio { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; }
+    .p-radio input { accent-color: var(--accent-blue); width: 14px; height: 14px; cursor: pointer; }
+
+    .tags-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .tag-cb { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--text); padding: 5px 8px; border-radius: 6px; border: 1px solid transparent; transition: border-color .15s, background .15s; user-select: none; }
+    .tag-cb:hover { border-color: var(--card-border2); background: rgba(77,166,255,.06); }
+    .tag-cb input { accent-color: var(--accent-blue); width: 13px; height: 13px; cursor: pointer; flex-shrink: 0; }
+    .tag-cb.checked { border-color: rgba(77,166,255,.35); background: rgba(77,166,255,.08); }
+
+    .p-check-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .p-check { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; user-select: none; }
+    .p-check input { accent-color: var(--accent-blue); width: 14px; height: 14px; cursor: pointer; }
+
+    .p-select { background: var(--input-bg); border: 1px solid var(--card-border2); color: var(--text); border-radius: 6px; padding: 7px 10px; font-size: 13px; outline: none; }
+    .p-select:focus { border-color: var(--accent-blue); }
+    .p-select:disabled { opacity: .4; }
+    .p-input:disabled { opacity: .4; }
+
+    .btn-run { background: var(--accent-orange); color: #fff; border: none; border-radius: 8px; padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; transition: opacity .15s; }
+    .btn-run:hover { opacity: .88; }
+    .btn-run:disabled { background: #4a4a4e; color: #888; cursor: not-allowed; opacity: 1; }
+
+    .api-key-row { display: flex; gap: 8px; align-items: center; }
+    .api-key-row .p-input { flex: 1; }
+    .btn-save-key { background: transparent; border: 1px solid var(--accent-blue); color: var(--accent-blue); border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    .btn-save-key:hover { background: rgba(77,166,255,.1); }
+    .key-hint { font-size: 11px; color: var(--text2); margin-top: 3px; }
+
+    /* ─── STEPS ─── */
+    .steps-list { display: flex; flex-direction: column; gap: 4px; }
+    .step-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 7px; border: 1px solid transparent; transition: background .2s; }
+    .step-row.idle   { color: var(--text2); }
+    .step-row.running{ background: rgba(247,147,26,.1); border-color: rgba(247,147,26,.25); }
+    .step-row.done   { background: rgba(0,212,170,.08); border-color: rgba(0,212,170,.2); }
+    .step-row.skip   { color: #555; }
+    .step-row.error  { background: rgba(255,71,87,.1); border-color: rgba(255,71,87,.25); }
+    .step-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+    .step-row.idle .step-icon   { color: #555; }
+    .step-row.running .step-icon{ color: var(--accent-orange); }
+    .step-row.done .step-icon   { color: var(--accent-green); }
+    .step-row.skip .step-icon   { color: #555; }
+    .step-row.error .step-icon  { color: var(--red); }
+    .step-label { flex: 1; font-size: 12px; }
+    .step-row.running .step-label { font-weight: 600; color: var(--text); }
+    .step-row.done .step-label  { color: var(--text); }
+    .step-row.error .step-label { color: #fca5a5; }
+    .step-detail { font-size: 11px; color: var(--text2); text-align: right; }
+    .step-row.done .step-detail  { color: var(--accent-green); }
+    .step-row.running .step-detail { color: var(--accent-orange); }
+    .step-row.error .step-detail  { color: var(--red); }
+
+    /* ─── RESULTS ─── */
+    .result-bar { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 16px 20px; }
+    .result-count { font-size: 22px; font-weight: 700; color: var(--accent-green); }
+    .result-label-txt { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .result-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .btn-download { background: transparent; border: 1px solid var(--accent-green); color: var(--accent-green); border-radius: 6px; padding: 8px 18px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .btn-download:hover { background: rgba(0,212,170,.1); }
+    .add-to-bot-wrap { position: relative; display: inline-block; }
+    .btn-add-to-bot { background: var(--accent-blue); color: #111; border: none; border-radius: 6px; padding: 8px 18px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .btn-add-to-bot:hover { opacity: .85; }
+    .bot-dropdown { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: var(--card-bg); border: 1px solid var(--card-border2); border-radius: 8px; min-width: 220px; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,.4); padding: 6px; }
+    .bot-dropdown.show { display: block; }
+    .bot-dropdown-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; gap: 10px; }
+    .bot-dropdown-item:hover { background: rgba(77,166,255,.1); }
+    .bot-dropdown-item .bot-dname { font-weight: 600; }
+    .bot-dropdown-item .bot-dstatus { font-size: 11px; }
+    .bot-dropdown-item .bot-dstatus.online { color: var(--accent-green); }
+    .bot-dropdown-item .bot-dstatus.offline { color: var(--text2); }
+    .result-error { color: var(--red); font-size: 13px; margin-top: 10px; }
+    .add-feedback { font-size: 12px; margin-top: 8px; }
+    .add-feedback.ok { color: var(--accent-green); }
+    .add-feedback.err { color: var(--red); }
   </style>
 </head>
 <body>
@@ -103,26 +201,150 @@
 <header>
   <div class="logo">PredictFun <span>Manager</span></div>
   <div class="header-stats">
-    <span data-i18n-pre="online_pre" data-i18n-post="online_post"><span data-i18n="online_label">Онлайн:</span> <b id="stat-online">—</b></span>
+    <span><span data-i18n="online_label">Онлайн:</span> <b id="stat-online">—</b></span>
     <span><span data-i18n="active_label">Активных:</span> <b id="stat-running">—</b></span>
   </div>
   <div class="header-right">
     <button class="btn-lang" onclick="toggleLang()" id="btn-lang">EN</button>
-    <button class="btn-add-bot" onclick="openAddModal()" data-i18n="add_bot">+ Добавить бота</button>
+    <button class="btn-add-bot" id="btn-add-bot-header" onclick="openAddModal()" data-i18n="add_bot">+ Добавить бота</button>
   </div>
 </header>
 
+<nav class="tabs-nav">
+  <button class="tab-btn active" onclick="showTab('dashboard')" id="tab-btn-dashboard" data-i18n="tab_dashboard">Дашборд</button>
+  <button class="tab-btn" onclick="showTab('parser')" id="tab-btn-parser" data-i18n="tab_parser">Парсер</button>
+</nav>
+
 <main>
-  <div class="summary-bar">
-    <div class="s-title" data-i18n="overview">Общий дашборд</div>
-    <div class="s-item"><div class="s-val green" id="sum-balance">—</div><div class="s-label" data-i18n="total_balance">Суммарный баланс</div></div>
-    <div class="s-item"><div class="s-val" id="sum-markets">—</div><div class="s-label" data-i18n="total_markets">Всего маркетов</div></div>
-    <div class="s-item"><div class="s-val" id="sum-orders">—</div><div class="s-label" data-i18n="open_orders">Открытых ордеров</div></div>
-    <div class="s-item"><div class="s-val" id="sum-bots">—</div><div class="s-label" data-i18n="bots_online">Ботов онлайн</div></div>
+
+  <!-- ─── ДАШБОРД ─── -->
+  <div class="tab-panel active" id="tab-dashboard">
+    <div class="summary-bar">
+      <div class="s-title" data-i18n="overview">Общий дашборд</div>
+      <div class="s-item"><div class="s-val green" id="sum-balance">—</div><div class="s-label" data-i18n="total_balance">Суммарный баланс</div></div>
+      <div class="s-item"><div class="s-val" id="sum-markets">—</div><div class="s-label" data-i18n="total_markets">Всего маркетов</div></div>
+      <div class="s-item"><div class="s-val" id="sum-orders">—</div><div class="s-label" data-i18n="open_orders">Открытых ордеров</div></div>
+      <div class="s-item"><div class="s-val" id="sum-bots">—</div><div class="s-label" data-i18n="bots_online">Ботов онлайн</div></div>
+    </div>
+    <div class="section-title" data-i18n="accounts">Аккаунты</div>
+    <div class="bots-grid" id="bots-grid"></div>
   </div>
 
-  <div class="section-title" data-i18n="accounts">Аккаунты</div>
-  <div class="bots-grid" id="bots-grid"></div>
+  <!-- ─── ПАРСЕР ─── -->
+  <div class="tab-panel" id="tab-parser">
+    <div class="parser-layout">
+
+      <!-- Левая колонка: настройки -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- API ключ -->
+        <div class="parser-card">
+          <h3 data-i18n="p_api_key">API Ключ</h3>
+          <div class="p-field">
+            <div class="api-key-row">
+              <input class="p-input" id="p-api-key" type="password" placeholder="x-api-key..." autocomplete="off"/>
+              <button class="btn-save-key" onclick="saveApiKey()" data-i18n="p_save_key">Сохранить</button>
+            </div>
+            <div class="key-hint" id="p-key-hint"></div>
+          </div>
+        </div>
+
+        <!-- Источник -->
+        <div class="parser-card">
+          <h3 data-i18n="p_source">Источник маркетов</h3>
+          <div class="p-radio-group">
+            <label class="p-radio">
+              <input type="radio" name="p-source" value="all" id="p-source-all" onchange="onSourceChange()" checked/>
+              <span data-i18n="p_source_all">Все маркеты Predict.fun</span>
+            </label>
+            <label class="p-radio">
+              <input type="radio" name="p-source" value="manual" id="p-source-manual" onchange="onSourceChange()"/>
+              <span data-i18n="p_source_manual">Список ID вручную</span>
+            </label>
+          </div>
+          <div class="p-field" id="p-manual-block" style="display:none;">
+            <label data-i18n="p_manual_hint">ID через запятую или с новой строки</label>
+            <textarea class="p-input" id="p-manual-ids" placeholder="123456, 789012, ..."></textarea>
+          </div>
+        </div>
+
+        <!-- Теги для исключения -->
+        <div class="parser-card">
+          <h3 data-i18n="p_exclude_tags">Исключить теги</h3>
+          <div class="tags-grid" id="p-tags-grid"></div>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="parser-card">
+          <h3 data-i18n="p_filters">Фильтры</h3>
+
+          <div class="p-check-row">
+            <label class="p-check">
+              <input type="checkbox" id="p-status-check" onchange="onStatusToggle()"/>
+              <span data-i18n="p_status">Статус:</span>
+            </label>
+            <select class="p-select" id="p-status-select" disabled>
+              <option value="REGISTERED">REGISTERED</option>
+              <option value="PRICE_PROPOSED">PRICE_PROPOSED</option>
+              <option value="PRICE_DISPUTED">PRICE_DISPUTED</option>
+              <option value="PAUSED">PAUSED</option>
+              <option value="RESOLVED">RESOLVED</option>
+              <option value="REMOVED">REMOVED</option>
+            </select>
+          </div>
+
+          <div class="p-check-row" style="margin-top:10px;">
+            <label class="p-check">
+              <input type="checkbox" id="p-kalshi-check" onchange="onKalshiToggle()"/>
+              <span data-i18n="p_kalshi">Только маркеты с Polymarket / Kalshi</span>
+            </label>
+          </div>
+
+          <div class="p-check-row" id="p-days-row" style="margin-top:10px;opacity:.4;pointer-events:none;">
+            <label class="p-check">
+              <input type="checkbox" id="p-days-check" onchange="onDaysToggle()"/>
+              <span data-i18n="p_min_days">Мин. дней до конца:</span>
+            </label>
+            <input class="p-input" type="number" id="p-days-val" min="1" max="365" value="30" disabled style="width:70px;"/>
+          </div>
+        </div>
+
+        <button class="btn-run" id="p-run-btn" onclick="runParser()" data-i18n="p_run">Запустить</button>
+      </div>
+
+      <!-- Правая колонка: прогресс + результаты -->
+      <div style="display:flex;flex-direction:column;gap:16px;">
+
+        <!-- Ход выполнения -->
+        <div class="parser-card">
+          <h3 data-i18n="p_progress">Ход выполнения</h3>
+          <div class="steps-list" id="p-steps-list">
+            <div style="color:var(--text2);font-size:12px;padding:8px 0;" data-i18n="p_steps_hint">Настройте параметры и нажмите «Запустить»</div>
+          </div>
+        </div>
+
+        <!-- Результат -->
+        <div class="parser-card" id="p-result-block" style="display:none;">
+          <h3 data-i18n="p_result">Результат</h3>
+          <div class="result-bar">
+            <div class="result-count" id="p-result-count">0</div>
+            <div class="result-label-txt" data-i18n="p_result_markets">маркетов прошли фильтр</div>
+            <div class="result-error" id="p-result-error" style="display:none;"></div>
+            <div class="result-actions" id="p-result-actions" style="display:none;">
+              <button class="btn-download" onclick="downloadResult()" data-i18n="p_download">↓ Скачать .txt</button>
+              <div class="add-to-bot-wrap">
+                <button class="btn-add-to-bot" onclick="toggleBotDropdown()" data-i18n="p_add_to_bot">+ Добавить в бот</button>
+                <div class="bot-dropdown" id="p-bot-dropdown"></div>
+              </div>
+            </div>
+            <div class="add-feedback" id="p-add-feedback" style="display:none;"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <!-- Модал добавления бота -->
@@ -168,308 +390,637 @@
 </div>
 
 <script>
-  // ─── i18n ───
-  const T = {
-    ru: {
-      online_label:     'Онлайн:',
-      active_label:     'Активных:',
-      add_bot:          '+ Добавить бота',
-      overview:         'Общий дашборд',
-      total_balance:    'Суммарный баланс',
-      total_markets:    'Всего маркетов',
-      open_orders:      'Открытых ордеров',
-      bots_online:      'Ботов онлайн',
-      accounts:         'Аккаунты',
-      modal_add_title:  'Добавить бота',
-      modal_name_label: 'Название (для удобства)',
-      modal_name_ph:    'Аккаунт 1',
-      modal_port_label: 'Порт бота',
-      modal_id_label:   'ID (латиница, без пробелов)',
-      modal_pwd_label:  'Пароль UI (если задан в настройках бота)',
-      modal_pwd_ph:     'Оставь пустым если нет пароля',
-      modal_add_btn:    'Добавить',
-      cancel:           'Отмена',
-      pwd_modal_title:  'Пароль бота',
-      pwd_modal_label:  'Пароль UI (оставь пустым чтобы убрать)',
-      pwd_modal_ph:     'Новый пароль',
-      save:             'Сохранить',
-      status_offline:   'Офлайн',
-      status_running:   'Работает',
-      status_stopped:   'Остановлен',
-      not_running:      'Процесс не запущен',
-      open_ui:          '↗ Открыть UI',
-      stop:             '■ Стоп',
-      start:            '▶ Старт',
-      stat_balance:     'Баланс',
-      stat_markets:     'Маркетов',
-      stat_orders:      'Ордеров',
-      no_bots:          'Нет ботов. Нажми «+ Добавить бота».',
-      confirm_remove:   'Удалить бота «{id}» из списка? Процесс бота не остановится.',
-      err_no_port:      'Укажи порт',
-      err_prefix:       'Ошибка: ',
-    },
-    en: {
-      online_label:     'Online:',
-      active_label:     'Active:',
-      add_bot:          '+ Add Bot',
-      overview:         'Overview',
-      total_balance:    'Total Balance',
-      total_markets:    'Total Markets',
-      open_orders:      'Open Orders',
-      bots_online:      'Bots Online',
-      accounts:         'Accounts',
-      modal_add_title:  'Add Bot',
-      modal_name_label: 'Display name',
-      modal_name_ph:    'Account 1',
-      modal_port_label: 'Bot port',
-      modal_id_label:   'ID (latin, no spaces)',
-      modal_pwd_label:  'UI password (if set in bot settings)',
-      modal_pwd_ph:     'Leave empty if no password',
-      modal_add_btn:    'Add',
-      cancel:           'Cancel',
-      pwd_modal_title:  'Bot Password',
-      pwd_modal_label:  'UI password (leave empty to remove)',
-      pwd_modal_ph:     'New password',
-      save:             'Save',
-      status_offline:   'Offline',
-      status_running:   'Running',
-      status_stopped:   'Stopped',
-      not_running:      'Process not running',
-      open_ui:          '↗ Open UI',
-      stop:             '■ Stop',
-      start:            '▶ Start',
-      stat_balance:     'Balance',
-      stat_markets:     'Markets',
-      stat_orders:      'Orders',
-      no_bots:          'No bots. Click «+ Add Bot».',
-      confirm_remove:   'Remove bot "{id}" from the list? The bot process will not stop.',
-      err_no_port:      'Enter port',
-      err_prefix:       'Error: ',
-    },
+// ─── i18n ─────────────────────────────────────────────────────────────────────
+const T = {
+  ru: {
+    online_label:     'Онлайн:',
+    active_label:     'Активных:',
+    add_bot:          '+ Добавить бота',
+    tab_dashboard:    'Дашборд',
+    tab_parser:       'Парсер',
+    overview:         'Общий дашборд',
+    total_balance:    'Суммарный баланс',
+    total_markets:    'Всего маркетов',
+    open_orders:      'Открытых ордеров',
+    bots_online:      'Ботов онлайн',
+    accounts:         'Аккаунты',
+    modal_add_title:  'Добавить бота',
+    modal_name_label: 'Название (для удобства)',
+    modal_name_ph:    'Аккаунт 1',
+    modal_port_label: 'Порт бота',
+    modal_id_label:   'ID (латиница, без пробелов)',
+    modal_pwd_label:  'Пароль UI (если задан в настройках бота)',
+    modal_pwd_ph:     'Оставь пустым если нет пароля',
+    modal_add_btn:    'Добавить',
+    cancel:           'Отмена',
+    pwd_modal_title:  'Пароль бота',
+    pwd_modal_label:  'Пароль UI (оставь пустым чтобы убрать)',
+    pwd_modal_ph:     'Новый пароль',
+    save:             'Сохранить',
+    status_offline:   'Офлайн',
+    status_running:   'Работает',
+    status_stopped:   'Остановлен',
+    not_running:      'Процесс не запущен',
+    open_ui:          '↗ Открыть UI',
+    stop:             '■ Стоп',
+    start:            '▶ Старт',
+    stat_balance:     'Баланс',
+    stat_markets:     'Маркетов',
+    stat_orders:      'Ордеров',
+    no_bots:          'Нет ботов. Нажми «+ Добавить бота».',
+    confirm_remove:   'Удалить бота «{id}» из списка? Процесс бота не остановится.',
+    err_no_port:      'Укажи порт',
+    err_prefix:       'Ошибка: ',
+    p_api_key:        'API Ключ',
+    p_save_key:       'Сохранить',
+    p_source:         'Источник маркетов',
+    p_source_all:     'Все маркеты Predict.fun',
+    p_source_manual:  'Список ID вручную',
+    p_manual_hint:    'ID через запятую или с новой строки',
+    p_exclude_tags:   'Исключить теги',
+    p_filters:        'Фильтры',
+    p_status:         'Статус:',
+    p_kalshi:         'Только маркеты с Polymarket / Kalshi',
+    p_min_days:       'Мин. дней до конца:',
+    p_run:            'Запустить',
+    p_progress:       'Ход выполнения',
+    p_steps_hint:     'Настройте параметры и нажмите «Запустить»',
+    p_result:         'Результат',
+    p_result_markets: 'маркетов прошли фильтр',
+    p_download:       '↓ Скачать .txt',
+    p_add_to_bot:     '+ Добавить в бот',
+  },
+  en: {
+    online_label:     'Online:',
+    active_label:     'Active:',
+    add_bot:          '+ Add Bot',
+    tab_dashboard:    'Dashboard',
+    tab_parser:       'Parser',
+    overview:         'Overview',
+    total_balance:    'Total Balance',
+    total_markets:    'Total Markets',
+    open_orders:      'Open Orders',
+    bots_online:      'Bots Online',
+    accounts:         'Accounts',
+    modal_add_title:  'Add Bot',
+    modal_name_label: 'Display name',
+    modal_name_ph:    'Account 1',
+    modal_port_label: 'Bot port',
+    modal_id_label:   'ID (latin, no spaces)',
+    modal_pwd_label:  'UI password (if set in bot settings)',
+    modal_pwd_ph:     'Leave empty if no password',
+    modal_add_btn:    'Add',
+    cancel:           'Cancel',
+    pwd_modal_title:  'Bot Password',
+    pwd_modal_label:  'UI password (leave empty to remove)',
+    pwd_modal_ph:     'New password',
+    save:             'Save',
+    status_offline:   'Offline',
+    status_running:   'Running',
+    status_stopped:   'Stopped',
+    not_running:      'Process not running',
+    open_ui:          '↗ Open UI',
+    stop:             '■ Stop',
+    start:            '▶ Start',
+    stat_balance:     'Balance',
+    stat_markets:     'Markets',
+    stat_orders:      'Orders',
+    no_bots:          'No bots. Click «+ Add Bot».',
+    confirm_remove:   'Remove bot "{id}" from the list? The bot process will not stop.',
+    err_no_port:      'Enter port',
+    err_prefix:       'Error: ',
+    p_api_key:        'API Key',
+    p_save_key:       'Save',
+    p_source:         'Market source',
+    p_source_all:     'All markets from Predict.fun',
+    p_source_manual:  'Enter IDs manually',
+    p_manual_hint:    'IDs separated by comma or newline',
+    p_exclude_tags:   'Exclude tags',
+    p_filters:        'Filters',
+    p_status:         'Status:',
+    p_kalshi:         'Only markets on Polymarket / Kalshi',
+    p_min_days:       'Min days until end:',
+    p_run:            'Run',
+    p_progress:       'Progress',
+    p_steps_hint:     'Set parameters and click Run',
+    p_result:         'Result',
+    p_result_markets: 'markets passed the filter',
+    p_download:       '↓ Download .txt',
+    p_add_to_bot:     '+ Add to bot',
+  },
+};
+
+let LANG = localStorage.getItem('predictfun_lang') || 'ru';
+
+function t(key, params) {
+  let s = (T[LANG] || T.ru)[key] || T.ru[key] || key;
+  if (params) for (const [k, v] of Object.entries(params)) s = s.replace('{' + k + '}', v);
+  return s;
+}
+
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.getElementById('btn-lang').textContent = LANG === 'ru' ? 'EN' : 'RU';
+}
+
+function toggleLang() {
+  LANG = LANG === 'ru' ? 'en' : 'ru';
+  localStorage.setItem('predictfun_lang', LANG);
+  applyI18n();
+  renderAll();
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+let activeTab = 'dashboard';
+
+function showTab(name) {
+  activeTab = name;
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('tab-btn-' + name).classList.add('active');
+  // Кнопка "добавить бота" только на дашборде
+  document.getElementById('btn-add-bot-header').style.display = name === 'dashboard' ? '' : 'none';
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+const COLORS = [
+  'linear-gradient(135deg,#4da6ff,#6c5ce7)',
+  'linear-gradient(135deg,#00d4aa,#00b894)',
+  'linear-gradient(135deg,#ffa502,#e17055)',
+  'linear-gradient(135deg,#a29bfe,#6c5ce7)',
+  'linear-gradient(135deg,#fd79a8,#e84393)',
+  'linear-gradient(135deg,#55efc4,#00b894)',
+];
+
+let bots = [];
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/bots');
+    bots = await res.json();
+    renderAll();
+  } catch (e) { console.error(e); }
+}
+
+function renderAll() {
+  const grid = document.getElementById('bots-grid');
+  const online  = bots.filter(b => b.online).length;
+  const running = bots.filter(b => b.running).length;
+  const totalBalance = bots.filter(b => b.balance != null).reduce((s, b) => s + b.balance, 0);
+  const totalMarkets = bots.reduce((s, b) => s + (b.markets_count || 0), 0);
+  const totalOrders  = bots.reduce((s, b) => s + (b.orders_count  || 0), 0);
+  const hasBalance   = bots.some(b => b.balance != null);
+
+  document.getElementById('stat-online').textContent  = online;
+  document.getElementById('stat-running').textContent = running;
+  document.getElementById('sum-balance').textContent  = hasBalance ? `$${totalBalance.toFixed(2)}` : '—';
+  document.getElementById('sum-markets').textContent  = totalMarkets;
+  document.getElementById('sum-orders').textContent   = totalOrders;
+  document.getElementById('sum-bots').textContent     = `${online} / ${bots.length}`;
+
+  if (!bots.length) {
+    grid.innerHTML = `<div class="empty"><div class="big">🤖</div>${t('no_bots')}</div>`;
+    return;
+  }
+  grid.innerHTML = bots.map((b, i) => renderCard(b, i)).join('');
+}
+
+function renderCard(b, i) {
+  const letter = (b.name || b.id)[0].toUpperCase();
+  const color  = COLORS[i % COLORS.length];
+  const cls    = !b.online ? 'bot-card offline' : 'bot-card';
+
+  let statusBadge;
+  if (!b.online)       statusBadge = `<div class="status-badge offline"><span class="dot grey"></span>${t('status_offline')}</div>`;
+  else if (b.running)  statusBadge = `<div class="status-badge running"><span class="dot green"></span>${t('status_running')}</div>`;
+  else                 statusBadge = `<div class="status-badge stopped"><span class="dot red"></span>${t('status_stopped')}</div>`;
+
+  const balance = b.balance != null ? `<div class="stat-val green">$${b.balance.toFixed(2)}</div>` : `<div class="stat-val dim">—</div>`;
+  const markets = b.online ? `<div class="stat-val">${b.markets_count}</div>` : `<div class="stat-val dim">—</div>`;
+  const orders  = b.online ? `<div class="stat-val yellow">${b.orders_count}</div>` : `<div class="stat-val dim">—</div>`;
+
+  let actions;
+  if (!b.online) {
+    actions = `
+      <button class="btn btn-ghost" style="flex:1;cursor:default">${t('not_running')}</button>
+      <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="${t('pwd_modal_title')}">🔑</button>
+      <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
+  } else if (b.running) {
+    actions = `
+      <button class="btn btn-open" onclick="openBot(${b.port})">${t('open_ui')}</button>
+      <button class="btn btn-stop" onclick="proxyPost('${b.id}','api/bot/stop')">${t('stop')}</button>
+      <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="${t('pwd_modal_title')}">🔑</button>
+      <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
+  } else {
+    actions = `
+      <button class="btn btn-open" onclick="openBot(${b.port})">${t('open_ui')}</button>
+      <button class="btn btn-start" onclick="proxyPost('${b.id}','api/bot/start')">${t('start')}</button>
+      <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="${t('pwd_modal_title')}">🔑</button>
+      <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
+  }
+
+  return `
+    <div class="${cls}">
+      <div class="card-header">
+        <div class="avatar" style="background:${color}">${letter}</div>
+        <div class="name-block"><div class="bot-name"><span>${escHtml(b.name || b.id)}</span><span class="port-chip">:${b.port}</span></div></div>
+        ${statusBadge}
+      </div>
+      <div class="card-stats">
+        <div class="stat-block">${balance}<div class="stat-label">${t('stat_balance')}</div></div>
+        <div class="stat-block">${markets}<div class="stat-label">${t('stat_markets')}</div></div>
+        <div class="stat-block">${orders}<div class="stat-label">${t('stat_orders')}</div></div>
+      </div>
+      <div class="card-actions">${actions}</div>
+    </div>`;
+}
+
+function openBot(port) { window.open(`http://${location.hostname}:${port}`, '_blank'); }
+
+async function proxyPost(botId, path) {
+  try {
+    await fetch(`/api/proxy/${botId}/${path}`, { method: 'POST' });
+    setTimeout(refresh, 1500);
+  } catch (e) { alert(t('err_prefix') + e); }
+}
+
+async function removeBot(botId) {
+  if (!confirm(t('confirm_remove', { id: botId }))) return;
+  await fetch(`/api/bots/${botId}`, { method: 'DELETE' });
+  refresh();
+}
+
+// ─── Модал добавления бота ────────────────────────────────────────────────────
+function openAddModal() { document.getElementById('add-modal').classList.add('show'); document.getElementById('new-name').focus(); }
+function closeAddModal() {
+  document.getElementById('add-modal').classList.remove('show');
+  ['new-name','new-port','new-id','new-password'].forEach(id => document.getElementById(id).value = '');
+}
+
+async function addBot() {
+  const name = document.getElementById('new-name').value.trim();
+  const port = parseInt(document.getElementById('new-port').value);
+  let id = document.getElementById('new-id').value.trim();
+  const password = document.getElementById('new-password').value.trim();
+  if (!id) id = 'bot' + port;
+  if (!port) { alert(t('err_no_port')); return; }
+  try {
+    const r = await fetch('/api/bots', {
+      method: 'POST', headers: {'content-type':'application/json'},
+      body: JSON.stringify({ id, name, port, password }),
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.detail || t('err_prefix') + r.status); return; }
+    closeAddModal(); refresh();
+  } catch (e) { alert(t('err_prefix') + e); }
+}
+
+// ─── Модал пароля ─────────────────────────────────────────────────────────────
+let _pwdBotId = null;
+function openPwdModal(botId) {
+  _pwdBotId = botId;
+  document.getElementById('pwd-input').value = '';
+  document.getElementById('pwd-modal').classList.add('show');
+  setTimeout(() => document.getElementById('pwd-input').focus(), 50);
+}
+function closePwdModal() { document.getElementById('pwd-modal').classList.remove('show'); _pwdBotId = null; }
+async function savePassword() {
+  const password = document.getElementById('pwd-input').value.trim();
+  try {
+    await fetch(`/api/bots/${_pwdBotId}/password`, {
+      method: 'PUT', headers: {'content-type':'application/json'},
+      body: JSON.stringify({ password }),
+    });
+    closePwdModal(); refresh();
+  } catch (e) { alert(t('err_prefix') + e); }
+}
+
+document.getElementById('add-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAddModal(); });
+document.getElementById('pwd-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closePwdModal(); });
+['new-name','new-port','new-id','new-password'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') addBot(); });
+});
+document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key === 'Enter') savePassword(); });
+
+// ─── PARSER ───────────────────────────────────────────────────────────────────
+
+let parserTags = [];
+let parserResult = [];
+let parserRunning = false;
+const SPINNER = ['◐','◓','◑','◒'];
+let spinnerTimers = {};
+
+async function initParser() {
+  // Загрузить теги
+  try {
+    const r = await fetch('/api/parser/tags');
+    parserTags = await r.json();
+    renderTagsGrid();
+  } catch (e) { console.error('Parser tags error', e); }
+
+  // Загрузить сохранённый API ключ
+  try {
+    const r = await fetch('/api/parser/config');
+    const cfg = await r.json();
+    if (cfg.has_key) {
+      document.getElementById('p-key-hint').textContent = `Сохранён: ${cfg.key_hint}`;
+    }
+  } catch (e) {}
+}
+
+function renderTagsGrid() {
+  const grid = document.getElementById('p-tags-grid');
+  grid.innerHTML = parserTags.map(tag => `
+    <label class="tag-cb" id="tag-wrap-${tag.id}">
+      <input type="checkbox" id="tag-${tag.id}" value="${tag.id}" data-name="${tag.name}"
+             onchange="onTagChange('${tag.id}')"/>
+      ${escHtml(tag.name)}
+    </label>
+  `).join('');
+}
+
+function onTagChange(tagId) {
+  const cb = document.getElementById('tag-' + tagId);
+  const wrap = document.getElementById('tag-wrap-' + tagId);
+  wrap.classList.toggle('checked', cb.checked);
+}
+
+function onSourceChange() {
+  const useAll = document.getElementById('p-source-all').checked;
+  document.getElementById('p-manual-block').style.display = useAll ? 'none' : '';
+}
+
+function onStatusToggle() {
+  const on = document.getElementById('p-status-check').checked;
+  document.getElementById('p-status-select').disabled = !on;
+}
+
+function onKalshiToggle() {
+  const on = document.getElementById('p-kalshi-check').checked;
+  const row = document.getElementById('p-days-row');
+  row.style.opacity = on ? '1' : '.4';
+  row.style.pointerEvents = on ? '' : 'none';
+  if (!on) {
+    document.getElementById('p-days-check').checked = false;
+    document.getElementById('p-days-val').disabled = true;
+  }
+}
+
+function onDaysToggle() {
+  const on = document.getElementById('p-days-check').checked;
+  document.getElementById('p-days-val').disabled = !on;
+}
+
+async function saveApiKey() {
+  const key = document.getElementById('p-api-key').value.trim();
+  if (!key) return;
+  try {
+    await fetch('/api/parser/config', {
+      method: 'PUT', headers: {'content-type':'application/json'},
+      body: JSON.stringify({ api_key: key }),
+    });
+    document.getElementById('p-key-hint').textContent = `Сохранён: ...${key.slice(-4)}`;
+    document.getElementById('p-api-key').value = '';
+  } catch (e) { alert('Ошибка сохранения ключа'); }
+}
+
+function getSelectedTags() {
+  return parserTags.filter(tag => document.getElementById('tag-' + tag.id)?.checked);
+}
+
+function buildStepLabels() {
+  const useAll = document.getElementById('p-source-all').checked;
+  const tags = getSelectedTags();
+  const hasStatus = document.getElementById('p-status-check').checked;
+  const useKalshi = document.getElementById('p-kalshi-check').checked;
+  const K = tags.length;
+
+  const steps = [];
+  steps.push({ idx: 1, label: useAll ? 'Загрузка всех маркетов с Predict.fun' : 'Загрузка списка маркетов' });
+  tags.forEach((tag, i) => steps.push({ idx: 2 + i, label: `Исключаем маркеты с тегом «${tag.name}»` }));
+  steps.push({ idx: 2 + K, label: 'Вычитаем из списка' });
+  steps.push({ idx: 3 + K, label: hasStatus || (!useKalshi) ? 'Проверка статуса и даты' : 'Проверка статуса и даты' });
+  if (useKalshi) steps.push({ idx: 4 + K, label: 'Проверка на Polymarket / Kalshi' });
+  return steps;
+}
+
+function renderSteps(steps) {
+  Object.values(spinnerTimers).forEach(clearInterval);
+  spinnerTimers = {};
+  const list = document.getElementById('p-steps-list');
+  list.innerHTML = steps.map(s => `
+    <div class="step-row idle" id="step-${s.idx}">
+      <span class="step-icon" id="step-icon-${s.idx}">○</span>
+      <span class="step-label">${escHtml(s.label)}</span>
+      <span class="step-detail" id="step-detail-${s.idx}"></span>
+    </div>
+  `).join('');
+}
+
+function updateStep(idx, status, detail) {
+  const row = document.getElementById('step-' + idx);
+  if (!row) return;
+  const icon = document.getElementById('step-icon-' + idx);
+  const det  = document.getElementById('step-detail-' + idx);
+  if (spinnerTimers[idx]) { clearInterval(spinnerTimers[idx]); delete spinnerTimers[idx]; }
+
+  row.className = 'step-row ' + status;
+  if (detail) det.textContent = detail;
+
+  if (status === 'running') {
+    let si = 0;
+    icon.textContent = SPINNER[0];
+    spinnerTimers[idx] = setInterval(() => { si = (si + 1) % 4; icon.textContent = SPINNER[si]; }, 200);
+  } else if (status === 'done')  { icon.textContent = '✓'; }
+  else if (status === 'skip')    { icon.textContent = '−'; }
+  else if (status === 'error')   { icon.textContent = '✗'; }
+}
+
+async function runParser() {
+  if (parserRunning) return;
+  const useAll = document.getElementById('p-source-all').checked;
+  const apiKey = document.getElementById('p-api-key').value.trim();
+
+  // Собираем параметры
+  const tags = getSelectedTags();
+  const useKalshi = document.getElementById('p-kalshi-check').checked;
+  const useStatus = document.getElementById('p-status-check').checked;
+  const useDays = useKalshi && document.getElementById('p-days-check').checked;
+
+  let marketIdsInput = [];
+  if (!useAll) {
+    const raw = document.getElementById('p-manual-ids').value;
+    marketIdsInput = raw.split(/[\s,]+/).map(s => s.trim()).filter(s => /^\d+$/.test(s));
+    if (!marketIdsInput.length) { alert('Введите хотя бы один ID маркета'); return; }
+  }
+
+  const body = {
+    api_key: apiKey || undefined,
+    use_all_markets: useAll,
+    market_ids: marketIdsInput,
+    exclude_tag_ids: tags.map(t => t.id),
+    exclude_tag_names: tags.map(t => t.name),
+    require_status: useStatus ? document.getElementById('p-status-select').value : null,
+    min_days: useDays ? parseInt(document.getElementById('p-days-val').value) : null,
+    use_kalshi: useKalshi,
   };
 
-  let LANG = localStorage.getItem('predictfun_lang') || 'ru';
+  // Готовим UI
+  parserRunning = true;
+  parserResult = [];
+  document.getElementById('p-run-btn').disabled = true;
+  document.getElementById('p-result-block').style.display = 'none';
+  document.getElementById('p-add-feedback').style.display = 'none';
 
-  function t(key, params) {
-    let s = (T[LANG] || T.ru)[key] || T.ru[key] || key;
-    if (params) for (const [k, v] of Object.entries(params)) s = s.replace('{' + k + '}', v);
-    return s;
-  }
+  const steps = buildStepLabels();
+  renderSteps(steps);
 
-  function applyI18n() {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      el.textContent = t(el.dataset.i18n);
+  try {
+    const resp = await fetch('/api/parser/run', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
     });
-    document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-      el.placeholder = t(el.dataset.i18nPh);
-    });
-    document.getElementById('btn-lang').textContent = LANG === 'ru' ? 'EN' : 'RU';
-  }
 
-  function toggleLang() {
-    LANG = LANG === 'ru' ? 'en' : 'ru';
-    localStorage.setItem('predictfun_lang', LANG);
-    applyI18n();
-    renderAll();
-  }
-
-  // ─── Data ───
-  const COLORS = [
-    'linear-gradient(135deg,#4da6ff,#6c5ce7)',
-    'linear-gradient(135deg,#00d4aa,#00b894)',
-    'linear-gradient(135deg,#ffa502,#e17055)',
-    'linear-gradient(135deg,#a29bfe,#6c5ce7)',
-    'linear-gradient(135deg,#fd79a8,#e84393)',
-    'linear-gradient(135deg,#55efc4,#00b894)',
-  ];
-
-  let bots = [];
-
-  async function refresh() {
-    try {
-      const res = await fetch('/api/bots');
-      bots = await res.json();
-      renderAll();
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  function renderAll() {
-    const grid = document.getElementById('bots-grid');
-
-    const online  = bots.filter(b => b.online).length;
-    const running = bots.filter(b => b.running).length;
-    const totalBalance = bots.filter(b => b.balance != null).reduce((s, b) => s + b.balance, 0);
-    const totalMarkets = bots.reduce((s, b) => s + (b.markets_count || 0), 0);
-    const totalOrders  = bots.reduce((s, b) => s + (b.orders_count  || 0), 0);
-    const hasBalance   = bots.some(b => b.balance != null);
-
-    document.getElementById('stat-online').textContent  = online;
-    document.getElementById('stat-running').textContent = running;
-    document.getElementById('sum-balance').textContent  = hasBalance ? `$${totalBalance.toFixed(2)}` : '—';
-    document.getElementById('sum-markets').textContent  = totalMarkets;
-    document.getElementById('sum-orders').textContent   = totalOrders;
-    document.getElementById('sum-bots').textContent     = `${online} / ${bots.length}`;
-
-    if (!bots.length) {
-      grid.innerHTML = `<div class="empty"><div class="big">🤖</div>${t('no_bots')}</div>`;
+    if (!resp.ok) {
+      const err = await resp.json();
+      showParserError(err.detail || 'Ошибка запроса');
       return;
     }
 
-    grid.innerHTML = bots.map((b, i) => renderCard(b, i)).join('');
-  }
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
 
-  function renderCard(b, i) {
-    const letter   = (b.name || b.id)[0].toUpperCase();
-    const color    = COLORS[i % COLORS.length];
-    const offline  = !b.online;
-    const cls      = offline ? 'bot-card offline' : 'bot-card';
-
-    let statusBadge;
-    if (!b.online)        statusBadge = `<div class="status-badge offline"><span class="dot grey"></span>${t('status_offline')}</div>`;
-    else if (b.running)   statusBadge = `<div class="status-badge running"><span class="dot green"></span>${t('status_running')}</div>`;
-    else                  statusBadge = `<div class="status-badge stopped"><span class="dot red"></span>${t('status_stopped')}</div>`;
-
-    const balance = b.balance != null ? `<div class="stat-val green">$${b.balance.toFixed(2)}</div>` : `<div class="stat-val dim">—</div>`;
-    const markets = b.online ? `<div class="stat-val">${b.markets_count}</div>` : `<div class="stat-val dim">—</div>`;
-    const orders  = b.online ? `<div class="stat-val yellow">${b.orders_count}</div>` : `<div class="stat-val dim">—</div>`;
-
-    let actions;
-    if (!b.online) {
-      actions = `
-        <button class="btn btn-ghost" style="flex:1;cursor:default">${t('not_running')}</button>
-        <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="${t('pwd_modal_title')}">🔑</button>
-        <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
-    } else if (b.running) {
-      actions = `
-        <button class="btn btn-open" onclick="openBot(${b.port})">${t('open_ui')}</button>
-        <button class="btn btn-stop" onclick="proxyPost('${b.id}','api/bot/stop')">${t('stop')}</button>
-        <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="${t('pwd_modal_title')}">🔑</button>
-        <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
-    } else {
-      actions = `
-        <button class="btn btn-open" onclick="openBot(${b.port})">${t('open_ui')}</button>
-        <button class="btn btn-start" onclick="proxyPost('${b.id}','api/bot/start')">${t('start')}</button>
-        <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="${t('pwd_modal_title')}">🔑</button>
-        <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        let ev;
+        try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+        if (ev.type === 'step') {
+          updateStep(ev.step, ev.status, ev.detail);
+        } else if (ev.type === 'done') {
+          parserResult = ev.ids || [];
+          showParserResult(parserResult, ev.error);
+        }
+      }
     }
+  } catch (e) {
+    showParserError(e.message);
+  } finally {
+    parserRunning = false;
+    document.getElementById('p-run-btn').disabled = false;
+  }
+}
 
-    return `
-      <div class="${cls}">
-        <div class="card-header">
-          <div class="avatar" style="background:${color}">${letter}</div>
-          <div class="name-block">
-            <div class="bot-name">
-              <span>${escHtml(b.name || b.id)}</span>
-              <span class="port-chip">:${b.port}</span>
-            </div>
-          </div>
-          ${statusBadge}
-        </div>
-        <div class="card-stats">
-          <div class="stat-block">${balance}<div class="stat-label">${t('stat_balance')}</div></div>
-          <div class="stat-block">${markets}<div class="stat-label">${t('stat_markets')}</div></div>
-          <div class="stat-block">${orders}<div class="stat-label">${t('stat_orders')}</div></div>
-        </div>
-        <div class="card-actions">${actions}</div>
-      </div>`;
+function showParserResult(ids, error) {
+  const block = document.getElementById('p-result-block');
+  block.style.display = '';
+  document.getElementById('p-result-count').textContent = ids.length;
+  const errEl = document.getElementById('p-result-error');
+  const actEl = document.getElementById('p-result-actions');
+  if (error) {
+    errEl.textContent = 'Ошибка: ' + error;
+    errEl.style.display = '';
+    actEl.style.display = 'none';
+  } else {
+    errEl.style.display = 'none';
+    actEl.style.display = ids.length ? '' : 'none';
   }
+}
 
-  function openBot(port) {
-    window.open(`http://${location.hostname}:${port}`, '_blank');
-  }
+function showParserError(msg) {
+  const block = document.getElementById('p-result-block');
+  block.style.display = '';
+  document.getElementById('p-result-count').textContent = '0';
+  document.getElementById('p-result-error').textContent = 'Ошибка: ' + msg;
+  document.getElementById('p-result-error').style.display = '';
+  document.getElementById('p-result-actions').style.display = 'none';
+}
 
-  async function proxyPost(botId, path) {
-    try {
-      await fetch(`/api/proxy/${botId}/${path}`, { method: 'POST' });
-      setTimeout(refresh, 1500);
-    } catch (e) { alert(t('err_prefix') + e); }
-  }
+function downloadResult() {
+  if (!parserResult.length) return;
+  const text = parserResult.join(',');
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'markets.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
-  async function removeBot(botId) {
-    if (!confirm(t('confirm_remove', { id: botId }))) return;
-    await fetch(`/api/bots/${botId}`, { method: 'DELETE' });
-    refresh();
+// ─── Добавить в бот ───────────────────────────────────────────────────────────
+function toggleBotDropdown() {
+  const dd = document.getElementById('p-bot-dropdown');
+  if (dd.classList.contains('show')) { dd.classList.remove('show'); return; }
+  // Рендерим список ботов
+  if (!bots.length) {
+    dd.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--text2);">Нет добавленных ботов</div>';
+  } else {
+    dd.innerHTML = bots.map(b => `
+      <div class="bot-dropdown-item" onclick="addToBot('${b.id}')">
+        <span class="bot-dname">${escHtml(b.name || b.id)}</span>
+        <span class="bot-dstatus ${b.online && b.running ? 'online' : 'offline'}">
+          ${b.online && b.running ? 'Работает' : (b.online ? 'Остановлен' : 'Офлайн')}
+        </span>
+      </div>
+    `).join('');
   }
+  dd.classList.add('show');
+}
 
-  // ─── Модал добавления ───
-  function openAddModal() {
-    document.getElementById('add-modal').classList.add('show');
-    document.getElementById('new-name').focus();
+document.addEventListener('click', e => {
+  const wrap = document.querySelector('.add-to-bot-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('p-bot-dropdown').classList.remove('show');
   }
-  function closeAddModal() {
-    document.getElementById('add-modal').classList.remove('show');
-    ['new-name','new-port','new-id','new-password'].forEach(id => document.getElementById(id).value = '');
-  }
+});
 
-  async function addBot() {
-    const name = document.getElementById('new-name').value.trim();
-    const port = parseInt(document.getElementById('new-port').value);
-    let id = document.getElementById('new-id').value.trim();
-    const password = document.getElementById('new-password').value.trim();
-    if (!id) id = 'bot' + port;
-    if (!port) { alert(t('err_no_port')); return; }
-    try {
-      const r = await fetch('/api/bots', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ id, name, port, password }),
-      });
-      if (!r.ok) { const e = await r.json(); alert(e.detail || t('err_prefix') + r.status); return; }
-      closeAddModal();
-      refresh();
-    } catch (e) { alert(t('err_prefix') + e); }
-  }
-
-  // ─── Модал пароля ───
-  let _pwdBotId = null;
-  function openPwdModal(botId) {
-    _pwdBotId = botId;
-    document.getElementById('pwd-input').value = '';
-    document.getElementById('pwd-modal').classList.add('show');
-    setTimeout(() => document.getElementById('pwd-input').focus(), 50);
-  }
-  function closePwdModal() {
-    document.getElementById('pwd-modal').classList.remove('show');
-    _pwdBotId = null;
-  }
-  async function savePassword() {
-    const password = document.getElementById('pwd-input').value.trim();
-    try {
-      await fetch(`/api/bots/${_pwdBotId}/password`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ password }),
-      });
-      closePwdModal();
-      refresh();
-    } catch (e) { alert(t('err_prefix') + e); }
-  }
-
-  document.getElementById('add-modal').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeAddModal();
-  });
-  document.getElementById('pwd-modal').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closePwdModal();
-  });
-
-  ['new-name','new-port','new-id','new-password'].forEach(id => {
-    document.getElementById(id).addEventListener('keydown', e => {
-      if (e.key === 'Enter') addBot();
+async function addToBot(botId) {
+  document.getElementById('p-bot-dropdown').classList.remove('show');
+  if (!parserResult.length) return;
+  const fb = document.getElementById('p-add-feedback');
+  fb.textContent = 'Добавляем...';
+  fb.className = 'add-feedback';
+  fb.style.display = '';
+  try {
+    const r = await fetch(`/api/proxy/${botId}/api/markets`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ market_ids: parserResult.map(String) }),
     });
-  });
-  document.getElementById('pwd-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') savePassword();
-  });
-
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if (r.ok) {
+      const data = await r.json();
+      const ok = Object.values(data.results || {}).filter(v => v === 'ok').length;
+      fb.textContent = `Добавлено ${ok} маркетов в бот`;
+      fb.className = 'add-feedback ok';
+    } else {
+      const err = await r.json().catch(() => ({}));
+      fb.textContent = 'Ошибка: ' + (err.detail || r.status);
+      fb.className = 'add-feedback err';
+    }
+  } catch (e) {
+    fb.textContent = 'Ошибка: ' + e.message;
+    fb.className = 'add-feedback err';
   }
+}
 
-  applyI18n();
-  refresh();
-  setInterval(refresh, 10000);
+// ─── Утилиты ──────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── Инит ─────────────────────────────────────────────────────────────────────
+applyI18n();
+refresh();
+initParser();
+setInterval(refresh, 10000);
 </script>
 </body>
 </html>
