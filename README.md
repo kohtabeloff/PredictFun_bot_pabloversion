@@ -400,6 +400,22 @@ If you run multiple accounts on one server, Predict.fun sees them all from the s
 
 ---
 
+## Updating to the latest version
+
+SSH into your server and run three commands:
+
+```bash
+cd ~/bot
+git pull
+sudo systemctl restart predictfun-manager.service
+```
+
+The trading bot keeps running — only the Manager (port 8000) restarts to pick up new files.
+
+> If the update changes core bot files (`main.py`, `core/`, `api/`) — restart the bot too: `sudo systemctl restart predictfun-bot.service`. This briefly stops trading and cancels active orders.
+
+---
+
 ## Updates and contacts
 
 Follow for bot updates, strategies, and insights:
