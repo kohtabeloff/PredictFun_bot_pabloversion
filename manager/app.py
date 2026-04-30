@@ -8,6 +8,9 @@ import asyncio
 import base64
 import json
 import os
+import subprocess
+import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
@@ -19,8 +22,11 @@ from manager import parser_runner as pr
 
 STATIC_DIR = Path(__file__).parent / "static"
 MANAGER_CONFIG = Path(__file__).parent.parent / "manager.json"
+MAIN_PY = MANAGER_CONFIG.parent / "main.py"
+ACCOUNTS_DIR = MANAGER_CONFIG.parent / "accounts"
 
-app = FastAPI(title="PredictFun Manager")
+# Словарь запущенных менеджером процессов: bot_id → Popen
+_processes: dict[str, subprocess.Popen] = {}
 
 
 # ── Конфиг ────────────────────────────────────────────────────────────────────
@@ -59,6 +65,61 @@ def _auth_headers(bot_cfg: dict) -> dict:
     return {"Authorization": f"Basic {encoded}"}
 
 
+# ── Управление процессами ─────────────────────────────────────────────────────
+
+def _bot_data_dir(bot: dict) -> Path:
+    stored = bot.get("data_dir")
+    if stored:
+        return Path(stored)
+    return ACCOUNTS_DIR / bot["id"]
+
+
+def _launch_process(bot: dict) -> subprocess.Popen:
+    data_dir = _bot_data_dir(bot)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        sys.executable,
+        str(MAIN_PY),
+        "--port", str(bot["port"]),
+        "--data-dir", str(data_dir),
+    ]
+    return subprocess.Popen(cmd, cwd=str(MAIN_PY.parent))
+
+
+async def _is_bot_online(port: int) -> bool:
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            r = await client.get(f"http://localhost:{port}/api/state")
+            return r.status_code == 200
+    except Exception:
+        return False
+
+
+# ── Lifespan: авто-старт управляемых ботов ───────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    cfg = load_config()
+    for bot in cfg["bots"]:
+        if not bot.get("managed"):
+            continue
+        online = await _is_bot_online(bot["port"])
+        if online:
+            # Процесс уже работает (выжил после перезапуска менеджера)
+            continue
+        try:
+            proc = _launch_process(bot)
+            _processes[bot["id"]] = proc
+            print(f"[Manager] Запущен бот {bot['id']} на порту {bot['port']}")
+        except Exception as e:
+            print(f"[Manager] Не удалось запустить бот {bot['id']}: {e}")
+    yield
+    # При остановке менеджера процессы ботов продолжают работать
+
+
+app = FastAPI(title="PredictFun Manager", lifespan=lifespan)
+
+
 # ── Фронтенд ─────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
@@ -79,6 +140,7 @@ async def list_bots():
                 "id": bot["id"],
                 "name": bot.get("name", bot["id"]),
                 "port": bot["port"],
+                "managed": bool(bot.get("managed")),
                 "online": False,
                 "running": False,
                 "balance": None,
@@ -103,9 +165,66 @@ async def list_bots():
     return result
 
 
+@app.post("/api/bots/create")
+async def create_bot(request: Request):
+    """Создать нового бота: выбирает порт, создаёт папку, запускает процесс."""
+    body = await request.json()
+    cfg = load_config()
+
+    # Авто-выбор порта
+    used_ports = {b["port"] for b in cfg["bots"]}
+    port = 8081
+    while port in used_ports:
+        port += 1
+
+    # Авто-выбор ID
+    existing_ids = {b["id"] for b in cfg["bots"]}
+    idx = 1
+    while f"bot{idx}" in existing_ids:
+        idx += 1
+    bot_id = f"bot{idx}"
+
+    name = (body.get("name") or "").strip() or f"Аккаунт {idx}"
+    data_dir = ACCOUNTS_DIR / bot_id
+
+    entry: dict = {
+        "id": bot_id,
+        "name": name,
+        "port": port,
+        "managed": True,
+        "data_dir": str(data_dir),
+    }
+    cfg["bots"].append(entry)
+    save_config(cfg)
+
+    try:
+        proc = _launch_process(entry)
+        _processes[bot_id] = proc
+    except Exception as e:
+        cfg["bots"] = [b for b in cfg["bots"] if b["id"] != bot_id]
+        save_config(cfg)
+        raise HTTPException(500, f"Не удалось запустить бот: {e}")
+
+    return {"ok": True, "id": bot_id, "port": port, "name": name}
+
+
+@app.post("/api/bots/{bot_id}/launch")
+async def launch_bot(bot_id: str):
+    """Запустить процесс управляемого бота (если он упал или не запущен)."""
+    bot = _get_bot_cfg(bot_id)
+    if not bot.get("managed"):
+        raise HTTPException(400, "Бот не управляется менеджером")
+    proc = _processes.get(bot_id)
+    if proc and proc.poll() is None:
+        raise HTTPException(409, "Процесс уже запущен")
+    proc = _launch_process(bot)
+    _processes[bot_id] = proc
+    return {"ok": True}
+
+
 @app.post("/api/bots")
 async def add_bot(request: Request):
-    """Добавить бота в manager.json."""
+    """Добавить существующего бота в manager.json (без запуска процесса)."""
     body = await request.json()
     bot_id = body.get("id", "").strip()
     name = body.get("name", "").strip()
@@ -143,12 +262,18 @@ async def set_bot_password(bot_id: str, request: Request):
 
 @app.delete("/api/bots/{bot_id}")
 async def remove_bot(bot_id: str):
-    """Удалить бота из manager.json (процесс не останавливает)."""
+    """Удалить бота из менеджера. Для управляемых ботов — останавливает процесс."""
     cfg = load_config()
-    before = len(cfg["bots"])
-    cfg["bots"] = [b for b in cfg["bots"] if b["id"] != bot_id]
-    if len(cfg["bots"]) == before:
+    bot = next((b for b in cfg["bots"] if b["id"] == bot_id), None)
+    if not bot:
         raise HTTPException(404, f"Бот '{bot_id}' не найден")
+
+    if bot.get("managed"):
+        proc = _processes.pop(bot_id, None)
+        if proc and proc.poll() is None:
+            proc.terminate()
+
+    cfg["bots"] = [b for b in cfg["bots"] if b["id"] != bot_id]
     save_config(cfg)
     return {"ok": True}
 
@@ -309,7 +434,6 @@ async def ws_proxy(bot_id: str, websocket: WebSocket):
     base_url = f"http://localhost:{bot_cfg['port']}"
     ws_url = f"ws://localhost:{bot_cfg['port']}/ws"
 
-    # Если бот с паролем — получаем одноразовый WS-токен
     if bot_cfg.get("password"):
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:

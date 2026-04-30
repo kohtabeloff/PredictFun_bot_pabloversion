@@ -24,6 +24,8 @@
     .header-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
     .btn-add-bot { background: var(--accent-blue); color: #111; border: none; border-radius: 6px; padding: 7px 16px; font-size: 13px; font-weight: 700; cursor: pointer; }
     .btn-add-bot:hover { opacity: .85; }
+    .btn-connect-bot { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-connect-bot:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
     .btn-lang { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .btn-lang:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
 
@@ -206,7 +208,8 @@
   </div>
   <div class="header-right">
     <button class="btn-lang" onclick="toggleLang()" id="btn-lang">EN</button>
-    <button class="btn-add-bot" id="btn-add-bot-header" onclick="openAddModal()" data-i18n="add_bot">+ Добавить бота</button>
+    <button class="btn-connect-bot" id="btn-connect-bot-header" onclick="openAddModal()" data-i18n="connect_bot">Подключить существующего</button>
+    <button class="btn-add-bot" id="btn-add-bot-header" onclick="openCreateModal()" data-i18n="create_bot">+ Создать бота</button>
   </div>
 </header>
 
@@ -347,10 +350,26 @@
 
 </main>
 
+<!-- Модал создания нового бота -->
+<div class="modal-overlay" id="create-modal">
+  <div class="modal">
+    <h3 data-i18n="modal_create_title">Создать нового бота</h3>
+    <div>
+      <label data-i18n="modal_create_name_label">Название (необязательно)</label>
+      <input id="create-name" data-i18n-ph="modal_name_ph" placeholder="Аккаунт 2" />
+    </div>
+    <p style="font-size:12px;color:var(--text2);line-height:1.5;" data-i18n="modal_create_hint">Бот запустится автоматически. Открой его UI и введи данные аккаунта Predict.fun.</p>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeCreateModal()" data-i18n="cancel">Отмена</button>
+      <button class="btn-modal-save" id="create-btn" onclick="createBot()" data-i18n="modal_create_btn">Создать и запустить</button>
+    </div>
+  </div>
+</div>
+
 <!-- Модал добавления бота -->
 <div class="modal-overlay" id="add-modal">
   <div class="modal">
-    <h3 data-i18n="modal_add_title">Добавить бота</h3>
+    <h3 data-i18n="modal_add_title">Подключить существующего бота</h3>
     <div>
       <label data-i18n="modal_name_label">Название (для удобства)</label>
       <input id="new-name" data-i18n-ph="modal_name_ph" placeholder="Аккаунт 1" />
@@ -395,6 +414,13 @@ const T = {
   ru: {
     online_label:     'Онлайн:',
     active_label:     'Активных:',
+    create_bot:       '+ Создать бота',
+    connect_bot:      'Подключить существующего',
+    modal_create_title: 'Создать нового бота',
+    modal_create_name_label: 'Название (необязательно)',
+    modal_create_hint: 'Бот запустится автоматически. Открой его UI и введи данные аккаунта Predict.fun.',
+    modal_create_btn: 'Создать и запустить',
+    launch_process:   '▶ Запустить',
     add_bot:          '+ Добавить бота',
     tab_dashboard:    'Дашборд',
     tab_parser:       'Парсер',
@@ -429,6 +455,7 @@ const T = {
     stat_orders:      'Ордеров',
     no_bots:          'Нет ботов. Нажми «+ Добавить бота».',
     confirm_remove:   'Удалить бота «{id}» из списка? Процесс бота не остановится.',
+    confirm_remove_managed: 'Удалить бота «{id}» и остановить его процесс?',
     err_no_port:      'Укажи порт',
     err_prefix:       'Ошибка: ',
     p_api_key:        'API Ключ',
@@ -453,6 +480,13 @@ const T = {
   en: {
     online_label:     'Online:',
     active_label:     'Active:',
+    create_bot:       '+ Create Bot',
+    connect_bot:      'Connect existing',
+    modal_create_title: 'Create new bot',
+    modal_create_name_label: 'Name (optional)',
+    modal_create_hint: 'The bot will start automatically. Open its UI and enter your Predict.fun credentials.',
+    modal_create_btn: 'Create & Launch',
+    launch_process:   '▶ Launch',
     add_bot:          '+ Add Bot',
     tab_dashboard:    'Dashboard',
     tab_parser:       'Parser',
@@ -487,6 +521,7 @@ const T = {
     stat_orders:      'Orders',
     no_bots:          'No bots. Click «+ Add Bot».',
     confirm_remove:   'Remove bot "{id}" from the list? The bot process will not stop.',
+    confirm_remove_managed: 'Remove bot "{id}" and stop its process?',
     err_no_port:      'Enter port',
     err_prefix:       'Error: ',
     p_api_key:        'API Key',
@@ -540,8 +575,10 @@ function showTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   document.getElementById('tab-btn-' + name).classList.add('active');
-  // Кнопка "добавить бота" только на дашборде
-  document.getElementById('btn-add-bot-header').style.display = name === 'dashboard' ? '' : 'none';
+  // Кнопки управления ботами только на дашборде
+  const show = name === 'dashboard' ? '' : 'none';
+  document.getElementById('btn-add-bot-header').style.display = show;
+  document.getElementById('btn-connect-bot-header').style.display = show;
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -603,8 +640,11 @@ function renderCard(b, i) {
 
   let actions;
   if (!b.online) {
+    const launchBtn = b.managed
+      ? `<button class="btn btn-start" style="flex:1" onclick="launchBot('${b.id}')">${t('launch_process')}</button>`
+      : `<button class="btn btn-ghost" style="flex:1;cursor:default">${t('not_running')}</button>`;
     actions = `
-      <button class="btn btn-ghost" style="flex:1;cursor:default">${t('not_running')}</button>
+      ${launchBtn}
       <button class="btn btn-ghost" onclick="openPwdModal('${b.id}')" title="${t('pwd_modal_title')}">🔑</button>
       <button class="btn btn-danger" onclick="removeBot('${b.id}')">🗑</button>`;
   } else if (b.running) {
@@ -647,7 +687,9 @@ async function proxyPost(botId, path) {
 }
 
 async function removeBot(botId) {
-  if (!confirm(t('confirm_remove', { id: botId }))) return;
+  const bot = bots.find(b => b.id === botId);
+  const msg = (bot && bot.managed) ? t('confirm_remove_managed', { id: botId }) : t('confirm_remove', { id: botId });
+  if (!confirm(msg)) return;
   await fetch(`/api/bots/${botId}`, { method: 'DELETE' });
   refresh();
 }
@@ -675,6 +717,46 @@ async function addBot() {
     closeAddModal(); refresh();
   } catch (e) { alert(t('err_prefix') + e); }
 }
+
+// ─── Модал создания бота ──────────────────────────────────────────────────────
+function openCreateModal() {
+  document.getElementById('create-modal').classList.add('show');
+  setTimeout(() => document.getElementById('create-name').focus(), 50);
+}
+function closeCreateModal() {
+  document.getElementById('create-modal').classList.remove('show');
+  document.getElementById('create-name').value = '';
+  document.getElementById('create-btn').disabled = false;
+  document.getElementById('create-btn').textContent = t('modal_create_btn');
+}
+
+async function createBot() {
+  const name = document.getElementById('create-name').value.trim();
+  const btn = document.getElementById('create-btn');
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const r = await fetch('/api/bots/create', {
+      method: 'POST', headers: {'content-type':'application/json'},
+      body: JSON.stringify({ name }),
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.detail || t('err_prefix') + r.status); btn.disabled = false; btn.textContent = t('modal_create_btn'); return; }
+    closeCreateModal();
+    refresh();
+    setTimeout(refresh, 3000);
+  } catch (e) { alert(t('err_prefix') + e); btn.disabled = false; btn.textContent = t('modal_create_btn'); }
+}
+
+async function launchBot(botId) {
+  try {
+    const r = await fetch(`/api/bots/${botId}/launch`, { method: 'POST' });
+    if (!r.ok) { const e = await r.json(); alert(e.detail || t('err_prefix') + r.status); return; }
+    setTimeout(refresh, 3000);
+  } catch (e) { alert(t('err_prefix') + e); }
+}
+
+document.getElementById('create-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreateModal(); });
+document.getElementById('create-name').addEventListener('keydown', e => { if (e.key === 'Enter') createBot(); });
 
 // ─── Модал пароля ─────────────────────────────────────────────────────────────
 let _pwdBotId = null;
