@@ -402,7 +402,13 @@ If you run multiple accounts on one server, Predict.fun sees them all from the s
 
 ## Updating to the latest version
 
-SSH into your server and run three commands:
+SSH into your server. First, find the bot folder — it's wherever you cloned the repository during setup:
+
+```bash
+ls ~
+```
+
+Navigate into it (replace `bot` with your folder name) and run:
 
 ```bash
 cd ~/bot
