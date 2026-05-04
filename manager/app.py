@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import hashlib
 import json
 import os
+import secrets
 import subprocess
 import sys
 from contextlib import asynccontextmanager
@@ -42,6 +44,27 @@ def save_config(data: dict):
     tmp = MANAGER_CONFIG.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(MANAGER_CONFIG)
+
+
+# ── Password hashing (PBKDF2-HMAC-SHA256, встроен в Python) ──────────────────
+
+_PBKDF2_PREFIX = "pbkdf2sha256:"
+
+
+def hash_password(plain: str) -> str:
+    salt = secrets.token_hex(16)
+    dk = hashlib.pbkdf2_hmac("sha256", plain.encode(), salt.encode(), 260_000)
+    return f"{_PBKDF2_PREFIX}{salt}:{dk.hex()}"
+
+
+def verify_password(plain: str, stored: str) -> bool:
+    if stored.startswith(_PBKDF2_PREFIX):
+        rest = stored[len(_PBKDF2_PREFIX):]
+        salt, dk_hex = rest.split(":", 1)
+        dk = hashlib.pbkdf2_hmac("sha256", plain.encode(), salt.encode(), 260_000)
+        return secrets.compare_digest(dk.hex(), dk_hex)
+    # Обратная совместимость: старые plaintext-пароли до миграции
+    return secrets.compare_digest(plain, stored)
 
 
 def get_bot_url(bot_id: str) -> str:
@@ -139,7 +162,7 @@ async def auth_middleware(request: Request, call_next):
         try:
             decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
             _, pwd = decoded.split(":", 1)
-            return pwd == password
+            return verify_password(pwd, password)
         except Exception:
             return False
 
@@ -303,10 +326,10 @@ async def set_manager_password(request: Request):
     current_password = body.get("current_password", "").strip()
     cfg = load_config()
     existing = cfg.get("manager_password", "").strip()
-    if existing and current_password != existing:
+    if existing and not verify_password(current_password, existing):
         raise HTTPException(403, "Неверный текущий пароль")
     if new_password:
-        cfg["manager_password"] = new_password
+        cfg["manager_password"] = hash_password(new_password)
     else:
         cfg.pop("manager_password", None)
     save_config(cfg)
@@ -503,6 +526,9 @@ async def ws_proxy(bot_id: str, websocket: WebSocket):
     # @app.middleware("http") не перехватывает WebSocket — проверяем вручную.
     mgr_cfg = load_config()
     mgr_password = mgr_cfg.get("manager_password", "").strip()
+    ws_client_host = (websocket.client.host if websocket.client else "") or ""
+    ws_is_local = ws_client_host in ("127.0.0.1", "::1", "localhost")
+
     if mgr_password:
         auth = websocket.headers.get("authorization", "")
         authorized = False
@@ -510,12 +536,16 @@ async def ws_proxy(bot_id: str, websocket: WebSocket):
             try:
                 decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
                 _, pwd = decoded.split(":", 1)
-                authorized = pwd == mgr_password
+                authorized = verify_password(pwd, mgr_password)
             except Exception:
                 pass
         if not authorized:
             await websocket.close(code=4003, reason="Unauthorized")
             return
+    elif not ws_is_local:
+        # Пароль не задан — WS разрешён только с localhost
+        await websocket.close(code=4003, reason="Manager has no password — localhost only")
+        return
 
     bot_cfg = _get_bot_cfg(bot_id)
     base_url = f"http://localhost:{bot_cfg['port']}"

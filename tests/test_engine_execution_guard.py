@@ -103,7 +103,6 @@ class ExecutionGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(worker.order_yes)
         self.assertEqual(engine.order_manager.calls, [("m1", "yes", 12.0, 0.5)])
 
-    @unittest.expectedFailure
     async def test_guard_should_clear_order_for_other_terminal_statuses(self):
         engine = self._make_engine()
         engine.api = _UnknownStatusAPI()
