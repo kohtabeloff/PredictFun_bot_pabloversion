@@ -197,7 +197,7 @@ def _market_ok(
             return False
     if min_days and min_days > 0:
         end = parse_end_date(market)
-        if end is not None and (end - today).days < min_days:
+        if end is None or (end - today).days < min_days:
             return False
     return True
 
@@ -278,7 +278,7 @@ def _apply_kalshi_filter(
         condition_ids = mdata.get("polymarketConditionIds") or []
         if min_days and min_days > 0 and condition_ids:
             end = _polymarket_end_date(condition_ids[0])
-            if end is not None and (end - today).days < min_days:
+            if end is None or (end - today).days < min_days:
                 return False
         return True
 
