@@ -37,6 +37,7 @@ class MarketWorker:
         self.queue: asyncio.Queue = asyncio.Queue(maxsize=10)
         self._task: asyncio.Task | None = None
         self._running = False
+        self._stopping = False  # выставляется перед cancel() чтобы перехватить in-flight ордера
 
         self.order_yes: OrderRecord | None = None
         self.order_no: OrderRecord | None = None
@@ -88,7 +89,7 @@ class MarketWorker:
                 pass
 
     def _build_diagnostic(self, calc: OrderCalculation | None = None) -> str:
-        if not self.settings.enabled:
+        if not self.settings.enabled or self._stopping:
             return "paused"
         if self.last_orderbook is None:
             return "waiting_orderbook"
@@ -179,7 +180,7 @@ class MarketWorker:
         """Обрабатывает одно обновление стакана."""
         self.last_orderbook = orderbook
         self.last_update = time.time()
-        if not self.settings.enabled:
+        if not self.settings.enabled or self._stopping:
             self.diagnostic = self._build_diagnostic()
             return
 
@@ -208,7 +209,7 @@ class MarketWorker:
                     self.market_id, "yes", target_yes, calc.buy_yes_shares
                 )
                 if new_order:
-                    if not self.settings.enabled:
+                    if not self.settings.enabled or self._stopping:
                         # cancel_all поменял флаг пока шёл await — снимаем ордер
                         await self.order_manager.cancel_orders([new_order.order_id], self.market_id)
                     else:
@@ -238,7 +239,7 @@ class MarketWorker:
                         )
                     finally:
                         self._pending_cancel_ids.discard(old_id)
-                    if new_order and not self.settings.enabled:
+                    if new_order and (not self.settings.enabled or self._stopping):
                         await self.order_manager.cancel_orders([new_order.order_id], self.market_id)
                     else:
                         self.order_yes = new_order
@@ -264,7 +265,7 @@ class MarketWorker:
                     self.market_id, "no", target_no, calc.buy_no_shares
                 )
                 if new_order:
-                    if not self.settings.enabled:
+                    if not self.settings.enabled or self._stopping:
                         await self.order_manager.cancel_orders([new_order.order_id], self.market_id)
                     else:
                         self.order_no = new_order
@@ -292,7 +293,7 @@ class MarketWorker:
                         )
                     finally:
                         self._pending_cancel_ids.discard(old_id)
-                    if new_order and not self.settings.enabled:
+                    if new_order and (not self.settings.enabled or self._stopping):
                         await self.order_manager.cancel_orders([new_order.order_id], self.market_id)
                     else:
                         self.order_no = new_order
@@ -351,6 +352,7 @@ class MarketWorker:
 
     async def stop(self):
         self._running = False
+        self._stopping = True
         if self._task and not self._task.done():
             self._task.cancel()
             try:

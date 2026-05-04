@@ -245,9 +245,10 @@ class BotEngine:
         self._broadcast_state()
         return True
 
-    async def cancel_all(self):
+    async def cancel_all(self) -> list[str]:
         """Отменяет все ордера и приостанавливает стратегии в памяти.
-        enabled не пишется в settings.json — при перезапуске всё восстановится."""
+        enabled не пишется в settings.json — при перезапуске всё восстановится.
+        Возвращает список market_id у которых ордера не удалось снять."""
         failed: list[str] = []
         for worker in list(self._workers.values()):
             worker.settings = worker.settings.model_copy(update={"enabled": False})
@@ -274,6 +275,7 @@ class BotEngine:
         else:
             self.logger.log("✓ Все ордера отменены, стратегии приостановлены")
         self._broadcast_state()
+        return failed
 
     def set_global_defaults(self, **kwargs):
         """Сохраняет настройки как дефолтные для новых маркетов (применяются при добавлении)."""

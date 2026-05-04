@@ -196,7 +196,9 @@ async def save_config(req: BotConfigRequest):
 @app.post("/api/cancel-all")
 async def cancel_all():
     engine = app.state.engine
-    await engine.cancel_all()
+    failed = await engine.cancel_all()
+    if failed:
+        return {"ok": False, "failed_markets": failed}
     return {"ok": True}
 
 
