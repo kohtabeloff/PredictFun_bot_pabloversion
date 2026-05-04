@@ -480,18 +480,7 @@ class BotEngine:
                                 else:
                                     worker.order_no = None
 
-                                # Авто-продажа — передаём последнюю известную цену
-                                sell_ok = await self.order_manager.sell_market(
-                                    worker.market_id, side, order.shares, mid_price=mid_price
-                                )
-                                if not sell_ok:
-                                    self.logger.log(
-                                        f"[{worker.market_id}] ✗ Авто-продажа {side.upper()} НЕ УДАЛАСЬ "
-                                        f"— позиция требует ручного закрытия!"
-                                    )
-
                                 # Telegram уведомление
-                                sell_status = "✅ Продажа выполнена" if sell_ok else "❌ Продажа НЕ удалась — закрой вручную!"
                                 tg_msg = (
                                     f"⚠ Лимитка исполнилась!\n"
                                     f"Маркет: {worker.market_info.get('title', worker.market_id)}\n"
@@ -502,7 +491,7 @@ class BotEngine:
                                 )
                                 if market_ctx:
                                     tg_msg += f"Рынок: {market_ctx.lstrip(', ')}\n"
-                                tg_msg += sell_status
+                                tg_msg += "❗ Закрой позицию вручную"
                                 await self._send_telegram(tg_msg)
 
                                 self.event_bus.emit({
