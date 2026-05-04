@@ -83,11 +83,16 @@ class ExecutionGuardTests(unittest.IsolatedAsyncioTestCase):
         finally:
             engine_module.asyncio.sleep = original_sleep
 
-    async def test_guard_sells_when_order_is_filled(self):
+    async def test_guard_clears_order_and_notifies_when_filled(self):
+        telegram_msgs = []
         engine = self._make_engine()
         engine.api = _FilledAPI()
         engine.order_manager = _OrderManagerStub()
-        engine._send_telegram = lambda *_args, **_kwargs: _async_noop()
+
+        async def _capture_telegram(msg):
+            telegram_msgs.append(msg)
+
+        engine._send_telegram = _capture_telegram
 
         worker = SimpleNamespace(
             market_id="m1",
@@ -100,8 +105,12 @@ class ExecutionGuardTests(unittest.IsolatedAsyncioTestCase):
 
         await self._run_single_guard_iteration(engine)
 
+        # Ордер должен быть сброшен
         self.assertIsNone(worker.order_yes)
-        self.assertEqual(engine.order_manager.calls, [("m1", "yes", 12.0, 0.5)])
+        # Авто-продажи нет — пользователь закрывает вручную
+        self.assertEqual(engine.order_manager.calls, [])
+        # Telegram уведомление отправлено
+        self.assertEqual(len(telegram_msgs), 1)
 
     async def test_guard_should_clear_order_for_other_terminal_statuses(self):
         engine = self._make_engine()

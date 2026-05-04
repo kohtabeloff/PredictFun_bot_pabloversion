@@ -213,13 +213,12 @@ class TestGetPages:
 # ── _apply_kalshi_filter ───────────────────────────────────────────────────────
 
 class TestApplyKalshiFilter:
-    def test_preserves_ids_without_title(self):
-        """Маркеты без заголовка должны оставаться."""
+    def test_drops_ids_without_title(self):
+        """Маркеты без заголовка должны отбрасываться — невозможно проверить через Kalshi."""
         market_data = {1: {}, 2: {"question": ""}}
         result, removed = _apply_kalshi_filter([1, 2], market_data, None)
-        assert 1 in result
-        assert 2 in result
-        assert removed == 0
+        assert 1 not in result
+        assert 2 not in result
 
     def test_removes_market_not_on_kalshi(self):
         import requests as req
