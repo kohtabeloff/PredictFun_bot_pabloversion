@@ -167,21 +167,20 @@ async def auth_middleware(request: Request, call_next):
             return False
 
     if not password:
-        # Пароль не задан — GET с localhost разрешён (можно зайти и установить пароль).
-        # POST/PUT/DELETE блокируем даже с localhost — чтобы любой локальный процесс
-        # (скомпрометированный бот и т.п.) не мог менять состояние менеджера.
-        if not is_local:
-            return Response(
-                "Менеджер не защищён паролем и доступен только локально. "
-                "Установите manager_password через настройки менеджера.",
-                status_code=403,
-            )
-        if request.method not in ("GET", "HEAD", "OPTIONS"):
-            return Response(
-                "Установите пароль менеджера для выполнения этого действия.",
-                status_code=403,
-            )
-        return await call_next(request)
+        # Пароль не задан — показываем страницу первичной настройки всем.
+        # Разрешаем только GET / (сама страница) и PUT /api/manager/password
+        # (чтобы форма могла сохранить пароль). Всё остальное блокируем.
+        path = request.url.path
+        if path == "/" and request.method == "GET":
+            return await call_next(request)
+        if path == "/api/manager/password" and request.method == "PUT":
+            return await call_next(request)
+        # Локальные процессы тоже не должны менять состояние без пароля
+        return Response(
+            "Сначала установите пароль менеджера.",
+            status_code=403,
+            media_type="text/plain; charset=utf-8",
+        )
 
     if _check_basic(request.headers):
         return await call_next(request)
@@ -195,9 +194,76 @@ async def auth_middleware(request: Request, call_next):
 
 # ── Фронтенд ─────────────────────────────────────────────────────────────────
 
+_SETUP_PAGE = """\
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Настройка менеджера</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0f1117; color: #e2e8f0; font-family: system-ui, sans-serif;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #1a1d27; border: 1px solid #2d3148; border-radius: 12px;
+            padding: 40px; width: 100%; max-width: 380px; }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    p  { font-size: 13px; color: #8892a4; margin-bottom: 24px; line-height: 1.5; }
+    label { display: block; font-size: 12px; color: #8892a4; margin-bottom: 6px; }
+    input { width: 100%; background: #0f1117; border: 1px solid #2d3148; border-radius: 8px;
+            color: #e2e8f0; padding: 10px 12px; font-size: 14px; margin-bottom: 16px; outline: none; }
+    input:focus { border-color: #4f6ef7; }
+    button { width: 100%; background: #4f6ef7; border: none; border-radius: 8px;
+             color: #fff; padding: 11px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    button:hover { background: #3d5ce0; }
+    .err { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Добро пожаловать</h1>
+    <p>Придумайте пароль для входа в менеджер. После этого браузер запросит его при каждом входе.</p>
+    <label>Новый пароль</label>
+    <input id="p1" type="password" placeholder="Минимум 6 символов" />
+    <label>Повторите пароль</label>
+    <input id="p2" type="password" placeholder="Повторите пароль" />
+    <button onclick="setup()">Установить пароль и войти</button>
+    <div class="err" id="err"></div>
+  </div>
+  <script>
+    document.getElementById('p2').addEventListener('keydown', e => { if (e.key === 'Enter') setup(); });
+    async function setup() {
+      const p1 = document.getElementById('p1').value;
+      const p2 = document.getElementById('p2').value;
+      const err = document.getElementById('err');
+      err.style.display = 'none';
+      if (p1.length < 6) { err.textContent = 'Пароль слишком короткий (минимум 6 символов)'; err.style.display = 'block'; return; }
+      if (p1 !== p2) { err.textContent = 'Пароли не совпадают'; err.style.display = 'block'; return; }
+      const r = await fetch('/api/manager/password', {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ current_password: '', new_password: p1 })
+      });
+      if (r.ok) {
+        window.location.reload();
+      } else {
+        const d = await r.json().catch(() => ({}));
+        err.textContent = 'Ошибка: ' + (d.detail || r.status);
+        err.style.display = 'block';
+      }
+    }
+  </script>
+</body>
+</html>
+"""
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    return (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    cfg = load_config()
+    if not cfg.get("manager_password", "").strip():
+        return HTMLResponse(_SETUP_PAGE)
+    return HTMLResponse((STATIC_DIR / "index.html").read_text(encoding="utf-8"))
 
 
 # ── API менеджера ─────────────────────────────────────────────────────────────
