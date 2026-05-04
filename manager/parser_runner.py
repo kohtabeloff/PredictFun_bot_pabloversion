@@ -224,7 +224,9 @@ def _kalshi_has_market(title: str, min_matches: int = 2) -> bool:
     words = re.findall(r"\b[a-zA-Z]{3,}\b", title)
     keywords = [w.lower() for w in words if w.lower() not in _STOP_WORDS]
     if len(keywords) < 2:
-        return True
+        # Слишком мало ключевых слов для надёжной проверки — блокируем,
+        # чтобы не пропускать непроверенные рынки.
+        return False
     query = " ".join(keywords[:4])
     try:
         r = requests.get(
@@ -233,7 +235,8 @@ def _kalshi_has_market(title: str, min_matches: int = 2) -> bool:
             timeout=15,
         )
         if r.status_code != 200:
-            return True
+            # Kalshi API недоступен — не можем подтвердить, блокируем.
+            return False
         events = r.json().get("events") or []
         if not events:
             return False
@@ -245,7 +248,8 @@ def _kalshi_has_market(title: str, min_matches: int = 2) -> bool:
                 return True
         return False
     except Exception:
-        return True
+        # Сеть упала или ответ не распарсился — блокируем.
+        return False
 
 
 def _apply_kalshi_filter(
@@ -268,7 +272,7 @@ def _apply_kalshi_filter(
         else:
             title = mdata.get("question") or mdata.get("title") or ""
             if not title:
-                keep.add(mid)  # нет заголовка — не фильтруем
+                pass  # нет заголовка — невозможно проверить, отбрасываем
             else:
                 kalshi_ids.append(mid)
 
