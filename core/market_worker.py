@@ -208,14 +208,18 @@ class MarketWorker:
                     self.market_id, "yes", target_yes, calc.buy_yes_shares
                 )
                 if new_order:
-                    self.order_yes = new_order
-                    self._record_reposition()
-                    self.log_func(
-                        f"[{self.market_id}] YES контекст: mid={calc.mid_price_yes*100:.1f}¢, "
-                        f"спред={calc.spread_yes*100:.1f}%, "
-                        f"ликвидность=${calc.liquidity_yes:.0f}, "
-                        f"расстояние от mid={( calc.mid_price_yes - target_yes)*100:.1f}¢"
-                    )
+                    if not self.settings.enabled:
+                        # cancel_all поменял флаг пока шёл await — снимаем ордер
+                        await self.order_manager.cancel_orders([new_order.order_id], self.market_id)
+                    else:
+                        self.order_yes = new_order
+                        self._record_reposition()
+                        self.log_func(
+                            f"[{self.market_id}] YES контекст: mid={calc.mid_price_yes*100:.1f}¢, "
+                            f"спред={calc.spread_yes*100:.1f}%, "
+                            f"ликвидность=${calc.liquidity_yes:.0f}, "
+                            f"расстояние от mid={( calc.mid_price_yes - target_yes)*100:.1f}¢"
+                        )
             elif self.order_yes is not None:
                 if not calc.can_place_yes:
                     # Отменяем — условия не выполнены
@@ -234,9 +238,12 @@ class MarketWorker:
                         )
                     finally:
                         self._pending_cancel_ids.discard(old_id)
-                    self.order_yes = new_order
-                    if new_order:
-                        self._record_reposition()
+                    if new_order and not self.settings.enabled:
+                        await self.order_manager.cancel_orders([new_order.order_id], self.market_id)
+                    else:
+                        self.order_yes = new_order
+                        if new_order:
+                            self._record_reposition()
 
         elif self.order_yes is not None:
             # Настройки изменились — отменяем YES
@@ -257,14 +264,17 @@ class MarketWorker:
                     self.market_id, "no", target_no, calc.buy_no_shares
                 )
                 if new_order:
-                    self.order_no = new_order
-                    self._record_reposition()
-                    self.log_func(
-                        f"[{self.market_id}] NO контекст: mid={calc.mid_price_no*100:.1f}¢, "
-                        f"спред={calc.spread_no*100:.1f}%, "
-                        f"ликвидность=${calc.liquidity_no:.0f}, "
-                        f"расстояние от mid={( calc.mid_price_no - target_no)*100:.1f}¢"
-                    )
+                    if not self.settings.enabled:
+                        await self.order_manager.cancel_orders([new_order.order_id], self.market_id)
+                    else:
+                        self.order_no = new_order
+                        self._record_reposition()
+                        self.log_func(
+                            f"[{self.market_id}] NO контекст: mid={calc.mid_price_no*100:.1f}¢, "
+                            f"спред={calc.spread_no*100:.1f}%, "
+                            f"ликвидность=${calc.liquidity_no:.0f}, "
+                            f"расстояние от mid={( calc.mid_price_no - target_no)*100:.1f}¢"
+                        )
             elif self.order_no is not None:
                 if not calc.can_place_no:
                     ok = await self.order_manager.cancel_orders(
@@ -282,9 +292,12 @@ class MarketWorker:
                         )
                     finally:
                         self._pending_cancel_ids.discard(old_id)
-                    self.order_no = new_order
-                    if new_order:
-                        self._record_reposition()
+                    if new_order and not self.settings.enabled:
+                        await self.order_manager.cancel_orders([new_order.order_id], self.market_id)
+                    else:
+                        self.order_no = new_order
+                        if new_order:
+                            self._record_reposition()
 
         elif self.order_no is not None:
             ok = await self.order_manager.cancel_orders([self.order_no.order_id], self.market_id)

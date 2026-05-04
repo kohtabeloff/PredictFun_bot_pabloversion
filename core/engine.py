@@ -248,20 +248,31 @@ class BotEngine:
     async def cancel_all(self):
         """Отменяет все ордера и приостанавливает стратегии в памяти.
         enabled не пишется в settings.json — при перезапуске всё восстановится."""
+        failed: list[str] = []
         for worker in list(self._workers.values()):
             worker.settings = worker.settings.model_copy(update={"enabled": False})
             ids = worker.get_active_order_ids()
             if ids and self.order_manager:
                 ok = await self.order_manager.cancel_orders(ids, market_id=worker.market_id)
+                if not ok:
+                    await asyncio.sleep(1)
+                    ok = await self.order_manager.cancel_orders(ids, market_id=worker.market_id)
                 if ok:
                     worker.order_yes = None
                     worker.order_no = None
                 else:
-                    self.logger.log(f"[{worker.market_id}] ✗ Не удалось отменить ордера — состояние сохранено")
+                    failed.append(worker.market_id)
+                    self.logger.log(f"[{worker.market_id}] ✗ Не удалось отменить ордера — закрой вручную на бирже!")
             else:
                 worker.order_yes = None
                 worker.order_no = None
-        self.logger.log("✓ Все ордера отменены, стратегии приостановлены")
+        if failed:
+            self.logger.log(f"⚠ Стратегии приостановлены, но ордера не сняты в {len(failed)} маркетах: {failed[:10]}")
+            await self._send_telegram(
+                f"⚠ Cancel All: стратегии остановлены, но ордера не удалось снять в маркетах: {', '.join(failed[:10])}"
+            )
+        else:
+            self.logger.log("✓ Все ордера отменены, стратегии приостановлены")
         self._broadcast_state()
 
     def set_global_defaults(self, **kwargs):
