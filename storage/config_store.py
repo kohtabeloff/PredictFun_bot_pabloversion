@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from pathlib import Path
 
 
@@ -38,8 +39,12 @@ class ConfigStore:
                 self._data = {}
 
     def _save(self):
-        with open(self._path, "w", encoding="utf-8") as f:
-            json.dump(self._data, f, ensure_ascii=False, indent=2)
+        dir_ = os.path.dirname(self._path) or "."
+        with tempfile.NamedTemporaryFile("w", dir=dir_, delete=False,
+                                         suffix=".tmp", encoding="utf-8") as tf:
+            json.dump(self._data, tf, ensure_ascii=False, indent=2)
+            tmp_path = tf.name
+        os.replace(tmp_path, self._path)
 
     def get(self) -> dict:
         result = dict(_DEFAULTS)

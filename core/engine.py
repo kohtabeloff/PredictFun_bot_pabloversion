@@ -446,7 +446,7 @@ class BotEngine:
                         # Ордер исчез из open — проверим статус
                         if order.order_id not in open_ids:
                             # Grace period: ордер только что выставлен — API ещё не обновился
-                            if time.time() - order.placed_at < 15:
+                            if time.time() - order.placed_at < 5:
                                 continue
                             # Backoff: если API уже много раз не отвечал — замедляемся
                             fail_count = self._guard_failures.get(order.order_id, 0)

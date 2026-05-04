@@ -120,6 +120,42 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="PredictFun Manager", lifespan=lifespan)
 
 
+# ── Auth middleware ───────────────────────────────────────────────────────────
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    cfg = load_config()
+    password = cfg.get("manager_password", "").strip()
+    client_host = (request.client.host if request.client else "") or ""
+    is_local = client_host in ("127.0.0.1", "::1", "localhost")
+
+    if not password:
+        # Пароль не задан — разрешаем только с localhost
+        if not is_local:
+            return Response(
+                "Менеджер не защищён паролем и доступен только локально. "
+                "Добавьте manager_password в manager.json.",
+                status_code=403,
+            )
+        return await call_next(request)
+
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Basic "):
+        try:
+            decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
+            _, pwd = decoded.split(":", 1)
+            if pwd == password:
+                return await call_next(request)
+        except Exception:
+            pass
+
+    return Response(
+        "Unauthorized",
+        status_code=401,
+        headers={"WWW-Authenticate": 'Basic realm="PredictFun Manager"'},
+    )
+
+
 # ── Фронтенд ─────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
@@ -232,6 +268,8 @@ async def add_bot(request: Request):
     password = body.get("password", "").strip()
     if not bot_id or not port:
         raise HTTPException(400, "Нужны id и port")
+    if port < 1024 or port > 65535:
+        raise HTTPException(400, "Порт должен быть в диапазоне 1024–65535")
     cfg = load_config()
     if any(b["id"] == bot_id for b in cfg["bots"]):
         raise HTTPException(409, f"Бот '{bot_id}' уже существует")

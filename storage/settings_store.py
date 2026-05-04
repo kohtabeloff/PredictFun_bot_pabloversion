@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 
 from models import MarketSettings
 
@@ -33,8 +34,12 @@ class SettingsStore:
     def save(self):
         try:
             raw = {mid: s.model_dump() for mid, s in self._data.items()}
-            with open(self._path, "w", encoding="utf-8") as f:
-                json.dump(raw, f, indent=2, ensure_ascii=False)
+            dir_ = os.path.dirname(self._path) or "."
+            with tempfile.NamedTemporaryFile("w", dir=dir_, delete=False,
+                                             suffix=".tmp", encoding="utf-8") as tf:
+                json.dump(raw, tf, indent=2, ensure_ascii=False)
+                tmp_path = tf.name
+            os.replace(tmp_path, self._path)
         except Exception as e:
             print(f"Ошибка сохранения настроек: {e}")
 

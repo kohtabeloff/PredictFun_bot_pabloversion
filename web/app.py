@@ -170,11 +170,11 @@ async def get_config():
     store = app.state.config_store
     data = store.get()
     result = dict(data)
-    if result.get("privy_wallet_private_key"):
-        result["privy_wallet_private_key_set"] = True
-        result["privy_wallet_private_key"] = ""
-    else:
-        result["privy_wallet_private_key_set"] = False
+    # Возвращаем только hint для всех чувствительных полей
+    for secret_field in ("privy_wallet_private_key", "api_key", "telegram_token"):
+        val = result.get(secret_field, "")
+        result[f"{secret_field}_set"] = bool(val)
+        result[secret_field] = f"...{val[-4:]}" if len(val) >= 4 else ""
     return result
 
 
