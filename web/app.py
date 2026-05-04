@@ -219,14 +219,17 @@ async def remove_all_markets():
     return {"ok": True}
 
 
-async def _restore_saved_markets(engine):
-    """Фоновая задача: восстанавливает маркеты из settings.json после старта бота."""
+async def _restore_saved_markets(engine, force_disabled: bool = False):
+    """Фоновая задача: восстанавливает маркеты из settings.json после старта бота.
+    force_disabled=True — маркеты загружаются в выключенном состоянии (ручной запуск).
+    force_disabled=False — восстанавливается сохранённый enabled (автоперезапуск).
+    """
     saved = engine.settings_store.all()
     if not saved:
         return
     ids = list(saved.keys())
     engine.logger.log(f"Восстановление {len(ids)} маркетов из settings.json...")
-    results = await engine.add_markets(ids)
+    results = await engine.add_markets(ids, force_disabled=force_disabled)
     ok = sum(1 for v in results.values() if v in ("ok", "already_exists"))
     err = [mid for mid, v in results.items() if "error" in str(v)]
     engine.logger.log(f"Восстановлено {ok} маркетов" + (f", ошибки: {', '.join(err)}" if err else ""))
@@ -255,7 +258,9 @@ async def bot_start():
         await engine.start()
     except Exception as e:
         raise HTTPException(500, f"Ошибка запуска: {e}")
-    asyncio.create_task(_restore_saved_markets(engine))
+    # Ручной старт: грузим маркеты выключенными, чтобы ордера не начали
+    # выставляться до того как пользователь проверит список и включит нужные.
+    asyncio.create_task(_restore_saved_markets(engine, force_disabled=True))
     return {"ok": True}
 
 
