@@ -290,6 +290,10 @@ def _apply_kalshi_filter(
     # Kalshi: параллельная проверка через текстовый поиск
     def _check_kalshi(mid: int) -> bool:
         mdata = market_data.get(mid) or {}
+        if min_days and min_days > 0:
+            end = parse_end_date(mdata)
+            if end is None or (end - today).days < min_days:
+                return False
         title = mdata.get("question") or mdata.get("title") or ""
         return _kalshi_has_market(title)
 

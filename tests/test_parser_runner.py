@@ -84,9 +84,9 @@ class TestMarketOk:
         assert _market_ok(market, None, 7, date.today()) is False
 
     def test_no_end_date_passes_min_days(self):
-        # Если у маркета нет даты — не фильтруем по дате
+        # Если у маркета нет даты — безопаснее отклонить его
         market = {"status": "ACTIVE"}
-        assert _market_ok(market, None, 7, date.today()) is True
+        assert _market_ok(market, None, 7, date.today()) is False
 
 
 # ── fetch_tags ─────────────────────────────────────────────────────────────────
@@ -244,6 +244,29 @@ class TestApplyKalshiFilter:
 
         market_data = {1: {"question": "Will Bitcoin reach 100k by end?"}}
         result, removed = _apply_kalshi_filter([1], market_data, None)
+        assert 1 in result
+        assert removed == 0
+
+    def test_rejects_kalshi_match_without_date_when_min_days_set(self):
+        market_data = {1: {"question": "Will Bitcoin reach 100k by end?"}}
+        with patch("manager.parser_runner._kalshi_has_market", return_value=True):
+            result, removed = _apply_kalshi_filter([1], market_data, 30)
+        assert 1 not in result
+        assert removed == 1
+
+    def test_rejects_kalshi_match_with_soon_end_date(self):
+        near = date.today() + timedelta(days=3)
+        market_data = {1: {"question": "Will Bitcoin reach 100k by end?", "endDate": near.isoformat()}}
+        with patch("manager.parser_runner._kalshi_has_market", return_value=True):
+            result, removed = _apply_kalshi_filter([1], market_data, 30)
+        assert 1 not in result
+        assert removed == 1
+
+    def test_keeps_kalshi_match_with_future_end_date(self):
+        future = date.today() + timedelta(days=40)
+        market_data = {1: {"question": "Will Bitcoin reach 100k by end?", "endDate": future.isoformat()}}
+        with patch("manager.parser_runner._kalshi_has_market", return_value=True):
+            result, removed = _apply_kalshi_filter([1], market_data, 30)
         assert 1 in result
         assert removed == 0
 
