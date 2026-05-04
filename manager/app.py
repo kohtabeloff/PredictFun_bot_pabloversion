@@ -132,25 +132,36 @@ async def auth_middleware(request: Request, call_next):
     client_host = (request.client.host if request.client else "") or ""
     is_local = client_host in ("127.0.0.1", "::1", "localhost")
 
+    def _check_basic(headers) -> bool:
+        auth = headers.get("Authorization", "")
+        if not auth.startswith("Basic "):
+            return False
+        try:
+            decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
+            _, pwd = decoded.split(":", 1)
+            return pwd == password
+        except Exception:
+            return False
+
     if not password:
-        # Пароль не задан — разрешаем только с localhost
+        # Пароль не задан — GET с localhost разрешён (можно зайти и установить пароль).
+        # POST/PUT/DELETE блокируем даже с localhost — чтобы любой локальный процесс
+        # (скомпрометированный бот и т.п.) не мог менять состояние менеджера.
         if not is_local:
             return Response(
                 "Менеджер не защищён паролем и доступен только локально. "
-                "Добавьте manager_password в manager.json.",
+                "Установите manager_password через настройки менеджера.",
+                status_code=403,
+            )
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            return Response(
+                "Установите пароль менеджера для выполнения этого действия.",
                 status_code=403,
             )
         return await call_next(request)
 
-    auth = request.headers.get("Authorization", "")
-    if auth.startswith("Basic "):
-        try:
-            decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
-            _, pwd = decoded.split(":", 1)
-            if pwd == password:
-                return await call_next(request)
-        except Exception:
-            pass
+    if _check_basic(request.headers):
+        return await call_next(request)
 
     return Response(
         "Unauthorized",
@@ -489,6 +500,23 @@ async def run_parser(request: Request):
 @app.websocket("/ws/proxy/{bot_id}")
 async def ws_proxy(bot_id: str, websocket: WebSocket):
     """Туннелирует WebSocket от браузера к нужному боту."""
+    # @app.middleware("http") не перехватывает WebSocket — проверяем вручную.
+    mgr_cfg = load_config()
+    mgr_password = mgr_cfg.get("manager_password", "").strip()
+    if mgr_password:
+        auth = websocket.headers.get("authorization", "")
+        authorized = False
+        if auth.startswith("Basic "):
+            try:
+                decoded = base64.b64decode(auth[6:]).decode("utf-8", errors="replace")
+                _, pwd = decoded.split(":", 1)
+                authorized = pwd == mgr_password
+            except Exception:
+                pass
+        if not authorized:
+            await websocket.close(code=4003, reason="Unauthorized")
+            return
+
     bot_cfg = _get_bot_cfg(bot_id)
     base_url = f"http://localhost:{bot_cfg['port']}"
     ws_url = f"ws://localhost:{bot_cfg['port']}/ws"
