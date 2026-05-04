@@ -28,6 +28,9 @@
     .btn-connect-bot:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
     .btn-lang { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .btn-lang:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+    .btn-settings { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); border-radius: 6px; padding: 5px 10px; font-size: 14px; cursor: pointer; line-height: 1; }
+    .btn-settings:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+    .form-hint { font-size: 11px; color: var(--text2); margin-top: 4px; }
 
     /* ─── TABS ─── */
     .tabs-nav { background: var(--header-bg); border-bottom: 1px solid var(--card-border); display: flex; gap: 0; padding: 0 24px; position: sticky; top: 57px; z-index: 99; }
@@ -208,6 +211,7 @@
   </div>
   <div class="header-right">
     <button class="btn-lang" onclick="toggleLang()" id="btn-lang">EN</button>
+    <button class="btn-settings" onclick="openSettingsModal()" title="Настройки менеджера">⚙</button>
     <button class="btn-connect-bot" id="btn-connect-bot-header" onclick="openAddModal()" data-i18n="connect_bot">Подключить существующего</button>
     <button class="btn-add-bot" id="btn-add-bot-header" onclick="openCreateModal()" data-i18n="create_bot">+ Создать бота</button>
   </div>
@@ -404,6 +408,25 @@
     <div class="modal-actions">
       <button class="btn-modal-cancel" onclick="closePwdModal()" data-i18n="cancel">Отмена</button>
       <button class="btn-modal-save" onclick="savePassword()" data-i18n="save">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <h3>Настройки менеджера</h3>
+    <div style="margin-bottom:12px">
+      <label>Текущий пароль менеджера</label>
+      <input id="settings-current-pwd" type="password" placeholder="Оставь пустым, если пароля нет" />
+    </div>
+    <div>
+      <label>Новый пароль менеджера</label>
+      <input id="settings-new-pwd" type="password" placeholder="Оставь пустым, чтобы убрать пароль" />
+      <div class="form-hint">После установки пароля менеджер будет требовать его при входе (HTTP Basic Auth)</div>
+    </div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-modal-cancel" onclick="closeSettingsModal()">Отмена</button>
+      <button class="btn-modal-save" onclick="saveManagerPassword()">Сохранить</button>
     </div>
   </div>
 </div>
@@ -780,6 +803,32 @@ async function savePassword() {
 
 document.getElementById('add-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeAddModal(); });
 document.getElementById('pwd-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closePwdModal(); });
+document.getElementById('settings-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeSettingsModal(); });
+
+function openSettingsModal() {
+  document.getElementById('settings-current-pwd').value = '';
+  document.getElementById('settings-new-pwd').value = '';
+  document.getElementById('settings-modal').classList.add('show');
+  document.getElementById('settings-current-pwd').focus();
+}
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.remove('show');
+}
+async function saveManagerPassword() {
+  const current = document.getElementById('settings-current-pwd').value;
+  const newPwd = document.getElementById('settings-new-pwd').value;
+  try {
+    const r = await fetch('/api/manager/password', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ current_password: current, new_password: newPwd })
+    });
+    const data = await r.json();
+    if (!r.ok) { alert('Ошибка: ' + (data.detail || r.status)); return; }
+    closeSettingsModal();
+    alert(newPwd ? 'Пароль менеджера установлен. При следующем входе потребуется авторизация.' : 'Пароль менеджера удалён.');
+  } catch (e) { alert('Ошибка: ' + e); }
+}
 ['new-name','new-port','new-id','new-password'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') addBot(); });
 });

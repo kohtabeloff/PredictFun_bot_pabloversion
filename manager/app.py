@@ -38,7 +38,10 @@ def load_config() -> dict:
 
 
 def save_config(data: dict):
-    MANAGER_CONFIG.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    import tempfile
+    tmp = MANAGER_CONFIG.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(MANAGER_CONFIG)
 
 
 def get_bot_url(bot_id: str) -> str:
@@ -277,6 +280,24 @@ async def add_bot(request: Request):
     if password:
         entry["password"] = password
     cfg["bots"].append(entry)
+    save_config(cfg)
+    return {"ok": True}
+
+
+@app.put("/api/manager/password")
+async def set_manager_password(request: Request):
+    """Установить или сменить пароль менеджера."""
+    body = await request.json()
+    new_password = body.get("new_password", "").strip()
+    current_password = body.get("current_password", "").strip()
+    cfg = load_config()
+    existing = cfg.get("manager_password", "").strip()
+    if existing and current_password != existing:
+        raise HTTPException(403, "Неверный текущий пароль")
+    if new_password:
+        cfg["manager_password"] = new_password
+    else:
+        cfg.pop("manager_password", None)
     save_config(cfg)
     return {"ok": True}
 
