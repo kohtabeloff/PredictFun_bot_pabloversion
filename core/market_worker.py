@@ -335,6 +335,8 @@ class MarketWorker:
             while self._running:
                 try:
                     orderbook = await asyncio.wait_for(self.queue.get(), timeout=60)
+                    if orderbook is None:  # sentinel от stop() — выходим из цикла
+                        break
                     await self._process(orderbook)
                 except asyncio.TimeoutError:
                     continue
@@ -354,8 +356,20 @@ class MarketWorker:
         self._running = False
         self._stopping = True
         if self._task and not self._task.done():
-            self._task.cancel()
+            # Посылаем sentinel чтобы разбудить воркер если он ждёт на queue.get().
+            # Если воркер внутри _process() — он сам дойдёт до конца и проверит _stopping.
             try:
-                await self._task
+                self.queue.put_nowait(None)
+            except asyncio.QueueFull:
+                pass
+            try:
+                await asyncio.wait_for(self._task, timeout=15.0)
+            except asyncio.TimeoutError:
+                # За 15 сек не завершился — принудительно отменяем
+                self._task.cancel()
+                try:
+                    await self._task
+                except asyncio.CancelledError:
+                    pass
             except asyncio.CancelledError:
                 pass
