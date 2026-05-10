@@ -4,6 +4,7 @@ FastAPI приложение: REST API + WebSocket для UI.
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 from typing import Any
 
@@ -19,11 +20,25 @@ from pydantic import BaseModel
 app = FastAPI(title="PredictFun Bot")
 
 STATIC_DIR = Path(__file__).parent / "static"
+_MANAGER_SECRET_FILE = Path(__file__).parent.parent / ".manager_proxy_secret"
+
+
+def _get_manager_secret() -> str:
+    secret = os.environ.get("MANAGER_PROXY_SECRET", "")
+    if not secret and _MANAGER_SECRET_FILE.exists():
+        try:
+            secret = _MANAGER_SECRET_FILE.read_text(encoding="utf-8").strip()
+        except Exception:
+            pass
+    return secret
 
 
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     """HTTP Basic Auth — если ui_password задан в настройках."""
+    if request.url.path == "/api/ping":
+        return await call_next(request)
+
     cfg = getattr(request.app.state, "config_store", None)
     password = cfg.get().get("ui_password", "") if cfg else ""
 
@@ -44,6 +59,14 @@ async def auth_middleware(request: Request, call_next):
             return Response("Требуется авторизация", status_code=401,
                             headers={"WWW-Authenticate": "Basic realm=\"PredictFun Bot\""})
 
+        if request.method in ("POST", "PUT", "DELETE"):
+            origin = request.headers.get("origin", "")
+            if origin:
+                host = request.headers.get("host", "")
+                expected = f"{request.url.scheme}://{host}"
+                if origin.rstrip("/") != expected.rstrip("/"):
+                    return Response("Forbidden: Origin mismatch", status_code=403)
+
     return await call_next(request)
 
 
@@ -55,6 +78,16 @@ async def index():
 
 
 # ── REST API ──────────────────────────────────────────────────────────────
+
+@app.get("/api/ping")
+async def manager_ping(request: Request):
+    """Проверка что это наш бот: менеджер отправляет секрет, бот его подтверждает."""
+    expected = _get_manager_secret()
+    provided = request.headers.get("x-manager-secret", "")
+    if not expected or not secrets.compare_digest(provided, expected):
+        raise HTTPException(403, "Invalid manager secret")
+    return Response("pong", media_type="text/plain")
+
 
 @app.get("/api/state")
 async def get_state():
@@ -175,6 +208,7 @@ async def get_config():
         val = result.get(secret_field, "")
         result[f"{secret_field}_set"] = bool(val)
         result[secret_field] = f"...{val[-4:]}" if len(val) >= 4 else ""
+    result["ui_password_set"] = bool(result.pop("ui_password", ""))
     return result
 
 

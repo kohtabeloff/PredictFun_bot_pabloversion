@@ -44,6 +44,7 @@ class ConfigStore:
                                          suffix=".tmp", encoding="utf-8") as tf:
             json.dump(self._data, tf, ensure_ascii=False, indent=2)
             tmp_path = tf.name
+        os.chmod(tmp_path, 0o600)
         os.replace(tmp_path, self._path)
 
     def get(self) -> dict:

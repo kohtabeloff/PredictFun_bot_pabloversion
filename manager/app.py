@@ -9,6 +9,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -16,6 +17,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import httpx
+from cryptography.fernet import Fernet
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException
 from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -24,11 +26,20 @@ from manager import parser_runner as pr
 
 STATIC_DIR = Path(__file__).parent / "static"
 MANAGER_CONFIG = Path(__file__).parent.parent / "manager.json"
+MANAGER_KEY_FILE = MANAGER_CONFIG.parent / ".manager_key"
+MANAGER_SECRET_FILE = MANAGER_CONFIG.parent / ".manager_proxy_secret"
 MAIN_PY = MANAGER_CONFIG.parent / "main.py"
 ACCOUNTS_DIR = MANAGER_CONFIG.parent / "accounts"
 
 # Словарь запущенных менеджером процессов: bot_id → Popen
 _processes: dict[str, subprocess.Popen] = {}
+
+# Одноразовый токен для первичной настройки пароля
+_setup_token: str | None = None
+
+_BOT_ID_RE = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+
+_parser_running = False
 
 
 # ── Конфиг ────────────────────────────────────────────────────────────────────
@@ -44,6 +55,39 @@ def save_config(data: dict):
     tmp = MANAGER_CONFIG.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(MANAGER_CONFIG)
+
+
+# ── Шифрование паролей ботов (Fernet, симметричный ключ) ─────────────────────
+
+def _get_fernet() -> Fernet:
+    if not MANAGER_KEY_FILE.exists():
+        key = Fernet.generate_key()
+        MANAGER_KEY_FILE.write_bytes(key)
+        MANAGER_KEY_FILE.chmod(0o600)
+    else:
+        key = MANAGER_KEY_FILE.read_bytes()
+    return Fernet(key)
+
+
+def encrypt_password(plain: str) -> str:
+    return _get_fernet().encrypt(plain.encode()).decode()
+
+
+def decrypt_password(token: str) -> str:
+    return _get_fernet().decrypt(token.encode()).decode()
+
+
+_FERNET_PREFIX = "fernet:"
+
+
+# ── Прокси-секрет (общий с ботами) ───────────────────────────────────────────
+
+def _get_or_create_proxy_secret() -> str:
+    if not MANAGER_SECRET_FILE.exists():
+        secret = secrets.token_urlsafe(32)
+        MANAGER_SECRET_FILE.write_text(secret, encoding="utf-8")
+        MANAGER_SECRET_FILE.chmod(0o600)
+    return MANAGER_SECRET_FILE.read_text(encoding="utf-8").strip()
 
 
 # ── Password hashing (PBKDF2-HMAC-SHA256, встроен в Python) ──────────────────
@@ -84,10 +128,11 @@ def _get_bot_cfg(bot_id: str) -> dict:
 
 
 def _auth_headers(bot_cfg: dict) -> dict:
-    password = bot_cfg.get("password", "")
-    if not password:
+    stored = bot_cfg.get("password", "")
+    if not stored:
         return {}
-    encoded = base64.b64encode(f"admin:{password}".encode()).decode()
+    plain = decrypt_password(stored[len(_FERNET_PREFIX):]) if stored.startswith(_FERNET_PREFIX) else stored
+    encoded = base64.b64encode(f"admin:{plain}".encode()).decode()
     return {"Authorization": f"Basic {encoded}"}
 
 
@@ -109,7 +154,9 @@ def _launch_process(bot: dict) -> subprocess.Popen:
         "--port", str(bot["port"]),
         "--data-dir", str(data_dir),
     ]
-    return subprocess.Popen(cmd, cwd=str(MAIN_PY.parent))
+    env = os.environ.copy()
+    env["MANAGER_PROXY_SECRET"] = _get_or_create_proxy_secret()
+    return subprocess.Popen(cmd, cwd=str(MAIN_PY.parent), env=env)
 
 
 async def _is_bot_online(port: int) -> bool:
@@ -125,7 +172,14 @@ async def _is_bot_online(port: int) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global _setup_token
     cfg = load_config()
+    if not cfg.get("manager_password", "").strip():
+        _setup_token = secrets.token_urlsafe(16)
+        print("\n" + "=" * 60)
+        print(f"  SETUP TOKEN: {_setup_token}")
+        print("  Введите этот токен на странице настройки менеджера.")
+        print("=" * 60 + "\n")
     for bot in cfg["bots"]:
         if not bot.get("managed"):
             continue
@@ -183,6 +237,13 @@ async def auth_middleware(request: Request, call_next):
         )
 
     if _check_basic(request.headers):
+        if request.method in ("POST", "PUT", "DELETE"):
+            origin = request.headers.get("origin", "")
+            if origin:
+                host = request.headers.get("host", "")
+                expected = f"{request.url.scheme}://{host}"
+                if origin.rstrip("/") != expected.rstrip("/"):
+                    return Response("Forbidden: Origin mismatch", status_code=403)
         return await call_next(request)
 
     return Response(
@@ -222,7 +283,9 @@ _SETUP_PAGE = """\
 <body>
   <div class="card">
     <h1>Добро пожаловать</h1>
-    <p>Придумайте пароль для входа в менеджер. После этого браузер запросит его при каждом входе.</p>
+    <p>Введите токен из консоли сервера, затем придумайте пароль для входа в менеджер.</p>
+    <label>Токен из консоли сервера</label>
+    <input id="tok" type="text" placeholder="Токен из терминала" autocomplete="off" />
     <label>Новый пароль</label>
     <input id="p1" type="password" placeholder="Минимум 6 символов" />
     <label>Повторите пароль</label>
@@ -233,16 +296,18 @@ _SETUP_PAGE = """\
   <script>
     document.getElementById('p2').addEventListener('keydown', e => { if (e.key === 'Enter') setup(); });
     async function setup() {
+      const tok = document.getElementById('tok').value.trim();
       const p1 = document.getElementById('p1').value;
       const p2 = document.getElementById('p2').value;
       const err = document.getElementById('err');
       err.style.display = 'none';
+      if (!tok) { err.textContent = 'Введите токен из консоли сервера'; err.style.display = 'block'; return; }
       if (p1.length < 6) { err.textContent = 'Пароль слишком короткий (минимум 6 символов)'; err.style.display = 'block'; return; }
       if (p1 !== p2) { err.textContent = 'Пароли не совпадают'; err.style.display = 'block'; return; }
       const r = await fetch('/api/manager/password', {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ current_password: '', new_password: p1 })
+        body: JSON.stringify({ current_password: '', new_password: p1, setup_token: tok })
       });
       if (r.ok) {
         window.location.reload();
@@ -371,14 +436,31 @@ async def add_bot(request: Request):
     password = body.get("password", "").strip()
     if not bot_id or not port:
         raise HTTPException(400, "Нужны id и port")
+    if not _BOT_ID_RE.match(bot_id):
+        raise HTTPException(400, "ID может содержать только буквы, цифры, '-' и '_' (макс. 64 символа)")
     if port < 1024 or port > 65535:
         raise HTTPException(400, "Порт должен быть в диапазоне 1024–65535")
     cfg = load_config()
     if any(b["id"] == bot_id for b in cfg["bots"]):
         raise HTTPException(409, f"Бот '{bot_id}' уже существует")
+    try:
+        proxy_secret = _get_or_create_proxy_secret()
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                f"http://localhost:{port}/api/ping",
+                headers={"X-Manager-Secret": proxy_secret},
+            )
+            if r.status_code != 200 or r.text.strip() != "pong":
+                raise HTTPException(400, f"Порт {port} не отвечает как бот PredictFun")
+    except HTTPException:
+        raise
+    except httpx.ConnectError:
+        raise HTTPException(400, f"Не удалось подключиться к порту {port} — бот не запущен?")
+    except Exception:
+        raise HTTPException(400, f"Порт {port} не отвечает — бот не запущен?")
     entry: dict = {"id": bot_id, "name": name or bot_id, "port": port}
     if password:
-        entry["password"] = password
+        entry["password"] = _FERNET_PREFIX + encrypt_password(password)
     cfg["bots"].append(entry)
     save_config(cfg)
     return {"ok": True}
@@ -387,17 +469,28 @@ async def add_bot(request: Request):
 @app.put("/api/manager/password")
 async def set_manager_password(request: Request):
     """Установить или сменить пароль менеджера."""
+    global _setup_token
     body = await request.json()
     new_password = body.get("new_password", "").strip()
     current_password = body.get("current_password", "").strip()
     cfg = load_config()
     existing = cfg.get("manager_password", "").strip()
-    if existing and not verify_password(current_password, existing):
+    if not existing:
+        provided_token = body.get("setup_token", "").strip()
+        if not _setup_token or not secrets.compare_digest(provided_token, _setup_token):
+            raise HTTPException(403, "Неверный токен настройки")
+    elif not verify_password(current_password, existing):
         raise HTTPException(403, "Неверный текущий пароль")
     if new_password:
         cfg["manager_password"] = hash_password(new_password)
+        _setup_token = None
     else:
         cfg.pop("manager_password", None)
+        _setup_token = secrets.token_urlsafe(16)
+        print("\n" + "=" * 60)
+        print(f"  SETUP TOKEN: {_setup_token}")
+        print("  Пароль менеджера сброшен. Используйте токен для установки нового.")
+        print("=" * 60 + "\n")
     save_config(cfg)
     return {"ok": True}
 
@@ -411,7 +504,7 @@ async def set_bot_password(bot_id: str, request: Request):
     for bot in cfg["bots"]:
         if bot["id"] == bot_id:
             if password:
-                bot["password"] = password
+                bot["password"] = _FERNET_PREFIX + encrypt_password(password)
             else:
                 bot.pop("password", None)
             save_config(cfg)
@@ -521,18 +614,26 @@ async def save_parser_config(request: Request):
 
 @app.post("/api/parser/run")
 async def run_parser(request: Request):
-    body = await request.json()
-    cfg = load_config()
-    api_key = (body.get("api_key") or cfg.get("parser_api_key", "")).strip()
-    if not api_key:
-        raise HTTPException(400, "API ключ не задан")
-
-    use_all = bool(body.get("use_all_markets", True))
-    raw_ids = body.get("market_ids") or []
+    global _parser_running
+    if _parser_running:
+        raise HTTPException(429, "Парсер уже запущен, дождитесь завершения")
+    _parser_running = True  # устанавливаем до первого await — нет гонки в asyncio
     try:
-        market_ids_input = [int(x) for x in raw_ids if str(x).strip()]
-    except ValueError:
-        raise HTTPException(400, "Некорректные market IDs")
+        body = await request.json()
+        cfg = load_config()
+        api_key = (body.get("api_key") or cfg.get("parser_api_key", "")).strip()
+        if not api_key:
+            raise HTTPException(400, "API ключ не задан")
+
+        use_all = bool(body.get("use_all_markets", True))
+        raw_ids = body.get("market_ids") or []
+        try:
+            market_ids_input = [int(x) for x in raw_ids if str(x).strip()]
+        except ValueError:
+            raise HTTPException(400, "Некорректные market IDs")
+    except HTTPException:
+        _parser_running = False
+        raise
 
     exclude_tag_ids: list[str] = body.get("exclude_tag_ids") or []
     exclude_tag_names: list[str] = body.get("exclude_tag_names") or []
@@ -566,18 +667,22 @@ async def run_parser(request: Request):
     )
 
     async def generate():
-        while True:
-            done = future.done()
-            try:
-                event = await asyncio.wait_for(queue.get(), timeout=0.5)
-                yield f"data: {json.dumps(event)}\n\n"
-            except asyncio.TimeoutError:
-                if done:
-                    break
-                yield ": keepalive\n\n"
+        global _parser_running
+        try:
+            while True:
+                done = future.done()
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=0.5)
+                    yield f"data: {json.dumps(event)}\n\n"
+                except asyncio.TimeoutError:
+                    if done:
+                        break
+                    yield ": keepalive\n\n"
 
-        result, error = future.result()
-        yield f"data: {json.dumps({'type': 'done', 'ids': result, 'error': error})}\n\n"
+            result, error = future.result()
+            yield f"data: {json.dumps({'type': 'done', 'ids': result, 'error': error})}\n\n"
+        finally:
+            _parser_running = False
 
     return StreamingResponse(
         generate(),
@@ -594,6 +699,16 @@ async def ws_proxy(bot_id: str, websocket: WebSocket):
     mgr_password = mgr_cfg.get("manager_password", "").strip()
     ws_client_host = (websocket.client.host if websocket.client else "") or ""
     ws_is_local = ws_client_host in ("127.0.0.1", "::1", "localhost")
+
+    origin = websocket.headers.get("origin", "")
+    if origin:
+        host = websocket.headers.get("host", "")
+        scheme = "wss" if websocket.url.scheme == "wss" else "ws"
+        http_scheme = "https" if scheme == "wss" else "http"
+        expected = f"{http_scheme}://{host}"
+        if origin.rstrip("/") != expected.rstrip("/"):
+            await websocket.close(code=4003, reason="Origin mismatch")
+            return
 
     if mgr_password:
         auth = websocket.headers.get("authorization", "")
