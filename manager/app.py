@@ -180,6 +180,20 @@ async def lifespan(app: FastAPI):
         print(f"  SETUP TOKEN: {_setup_token}")
         print("  Введите этот токен на странице настройки менеджера.")
         print("=" * 60 + "\n")
+    # Миграция: шифруем plaintext пароли ботов если есть
+    _migrate_changed = False
+    for bot in cfg["bots"]:
+        pw = bot.get("password", "")
+        if pw and not pw.startswith(_FERNET_PREFIX):
+            try:
+                bot["password"] = _FERNET_PREFIX + encrypt_password(pw)
+                _migrate_changed = True
+            except Exception as e:
+                print(f"[Manager] Не удалось зашифровать пароль бота {bot['id']}: {e}")
+    if _migrate_changed:
+        save_config(cfg)
+        print("[Manager] Пароли ботов зашифрованы.")
+
     for bot in cfg["bots"]:
         if not bot.get("managed"):
             continue
