@@ -346,6 +346,7 @@ class _PoolSlot:
                         self._ws = ws
                         self._connected = True
                         reconnect_attempt = 0
+                        self.log_func(f"[WS Pool slot={self.slot_id}] ✓ Подключено")
 
                         # Подписываемся на все известные маркеты батчами
                         subs = list(self._subscriptions)
