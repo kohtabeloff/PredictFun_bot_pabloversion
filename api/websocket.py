@@ -356,10 +356,13 @@ class _PoolSlot:
                             if i + 25 < len(subs):
                                 await asyncio.sleep(0.2)
 
+                        _msg_count = 0
+                        _ob_count = 0
                         async for message in ws:
                             if not self._running:
                                 break
                             if message.type == aiohttp.WSMsgType.TEXT:
+                                _msg_count += 1
                                 try:
                                     data = json.loads(message.data)
                                 except json.JSONDecodeError:
@@ -372,10 +375,15 @@ class _PoolSlot:
                                     topic = data.get("topic", "")
                                     if topic == "heartbeat":
                                         await self._send_heartbeat(data.get("data"))
+                                        if _msg_count <= 5:
+                                            self.log_func(f"[WS Pool slot={self.slot_id}] heartbeat #{_msg_count}")
                                         continue
                                     if topic.startswith("predictOrderbook/"):
                                         market_id = topic.split("/", 1)[1]
                                         ob = data.get("data", {})
+                                        _ob_count += 1
+                                        if _ob_count <= 3:
+                                            self.log_func(f"[WS Pool slot={self.slot_id}] orderbook {market_id}: bids={len(ob.get('bids') or [])}, asks={len(ob.get('asks') or [])}")
                                         if ob and (ob.get("bids") or ob.get("asks")):
                                             self._on_update(self.slot_id, market_id, ob)
 
