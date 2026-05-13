@@ -361,6 +361,8 @@ class _PoolSlot:
                         async for message in ws:
                             if not self._running:
                                 break
+                            if _msg_count == 0:
+                                self.log_func(f"[WS Pool slot={self.slot_id}] первое сообщение: type={message.type}, data={str(message.data)[:100]}")
                             if message.type == aiohttp.WSMsgType.TEXT:
                                 _msg_count += 1
                                 try:
