@@ -197,10 +197,10 @@ class BotConfigRequest(BaseModel):
     telegram_chat_id: str | None = None
     ui_password: str | None = None
     predict_points_only: bool | None = None
-    predict_points_poll_sec: int | None = None
+    predict_points_poll_sec: int | None = None  # 60–7200
     auto_sell_enabled: bool | None = None
-    auto_sell_max_loss_pct: float | None = None
-    auto_sell_delay_sec: float | None = None
+    auto_sell_max_loss_pct: float | None = None  # 0.1–95.0
+    auto_sell_delay_sec: float | None = None     # 0–3600
 
 
 @app.get("/api/config")
@@ -228,10 +228,10 @@ async def save_config(req: BotConfigRequest):
     cfg.TELEGRAM_TOKEN = data.get("telegram_token", "")
     cfg.TELEGRAM_CHAT_ID = data.get("telegram_chat_id", "")
     cfg.POINTS_FILTER_ENABLED = bool(data.get("predict_points_only", False))
-    cfg.POINTS_POLL_INTERVAL_SEC = int(data.get("predict_points_poll_sec", 600))
+    cfg.POINTS_POLL_INTERVAL_SEC = max(60, min(7200, int(data.get("predict_points_poll_sec", 600))))
     cfg.AUTO_SELL_ENABLED = bool(data.get("auto_sell_enabled", False))
-    cfg.AUTO_SELL_MAX_LOSS_PCT = float(data.get("auto_sell_max_loss_pct", 15.0))
-    cfg.AUTO_SELL_DELAY_SEC = float(data.get("auto_sell_delay_sec", 0.0))
+    cfg.AUTO_SELL_MAX_LOSS_PCT = max(0.1, min(95.0, float(data.get("auto_sell_max_loss_pct", 15.0))))
+    cfg.AUTO_SELL_DELAY_SEC = max(0.0, min(3600.0, float(data.get("auto_sell_delay_sec", 0.0))))
     return {"ok": True, "restart_required": any(
         k in updates for k in ("api_key", "predict_account_address", "privy_wallet_private_key", "proxy")
     )}
@@ -325,6 +325,13 @@ async def import_markets(req: ImportMarketsRequest):
     add_results = await engine.add_markets(market_ids, force_disabled=not req.apply_settings)
     for mid, res in add_results.items():
         results[mid] = res
+
+    # Откатываем settings для маркетов, которые не загрузились — иначе они
+    # будут пытаться автостартовать при следующем запуске бота с чужими настройками
+    if req.apply_settings:
+        for mid, res in add_results.items():
+            if "error" in str(res) and mid in settings_by_id:
+                engine.settings_store.remove(mid)
 
     ok = sum(1 for v in results.values() if v in ("ok", "already_exists"))
     errors = {mid: v for mid, v in results.items() if "error" in str(v)}

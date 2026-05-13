@@ -801,27 +801,24 @@ class BotEngine:
 
     async def _points_filter_loop(self):
         """
-        Каждые POINTS_POLL_INTERVAL_SEC обновляет инфо по маркетам и проверяет поинты.
-        Если POINTS_FILTER_ENABLED=False — просто спит и перепроверяет.
+        Проверяет поинты сразу после старта (через 5 сек), потом каждые POINTS_POLL_INTERVAL_SEC.
+        Если POINTS_FILTER_ENABLED=False — пропускает проверку и спит.
         Если поинты пропали — отменяет ордера и приостанавливает маркет.
         Если поинты вернулись — возобновляет маркет (восстанавливает enabled из settings).
         """
-        await asyncio.sleep(30)  # даём время маркетам загрузиться
+        await asyncio.sleep(5)  # минимальная пауза чтобы маркеты успели загрузиться
 
         while self.running:
             try:
                 import config as cfg
-                if not cfg.POINTS_FILTER_ENABLED:
-                    await asyncio.sleep(60)
-                    continue
-
-                await self._check_all_markets_points()
-
+                if cfg.POINTS_FILTER_ENABLED:
+                    await self._check_all_markets_points()
             except Exception as e:
                 self.logger.log(f"[PointsFilter] ✗ {e}")
 
             import config as cfg
-            await asyncio.sleep(cfg.POINTS_POLL_INTERVAL_SEC)
+            interval = max(60, cfg.POINTS_POLL_INTERVAL_SEC)  # минимум 60 сек
+            await asyncio.sleep(interval)
 
     async def _check_all_markets_points(self):
         """Проверяет поинты для всех активных маркетов и обновляет статус."""

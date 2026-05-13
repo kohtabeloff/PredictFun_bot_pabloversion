@@ -385,8 +385,11 @@ class OrderManager:
         body, order_hash = result
         resp = await self.api.place_order(body)
         if resp and isinstance(resp, dict) and resp.get("success"):
-            self.log_func(f"[{market_id}] ✓ Ордер на продажу выставлен (hash={order_hash[:10]}...)")
-            return order_hash
+            # Используем биржевой id (как в place_order) — именно он нужен для get_order/cancel
+            od = resp.get("data", {})
+            server_id = str(od.get("id") or od.get("orderId") or order_hash)
+            self.log_func(f"[{market_id}] ✓ Ордер на продажу выставлен id={server_id}")
+            return server_id
 
         self.log_func(f"[{market_id}] ✗ place_sell_limit_auto не удалась: {resp}")
         return None
