@@ -44,10 +44,15 @@ class BotEngine:
         self._balance_task: asyncio.Task | None = None
         self._bootstrap_task: asyncio.Task | None = None
         self._points_filter_task: asyncio.Task | None = None
+        self._auto_sell_monitor_task: asyncio.Task | None = None
 
         # Points filter: markets temporarily paused because they have no active reward
         self._points_blocked: set[str] = set()
         self._market_points_status: dict[str, bool | None] = {}  # None = not checked yet
+
+        # Auto-sell: pending sell limit orders placed after fill detection
+        # order_hash -> {market_id, side, fill_price, sell_price, shares, placed_at, title}
+        self._auto_sell_pending: dict[str, dict] = {}
 
         self.running = False
         self._state = "stopped"  # stopped | starting | running | stopping
@@ -124,6 +129,7 @@ class BotEngine:
             self._balance_task = asyncio.create_task(self._balance_loop())
             self._bootstrap_task = asyncio.create_task(self._bootstrap_orderbooks_loop())
             self._points_filter_task = asyncio.create_task(self._points_filter_loop())
+            self._auto_sell_monitor_task = asyncio.create_task(self._auto_sell_monitor_loop())
 
             self.running = True
             self._state = "running"
@@ -134,11 +140,13 @@ class BotEngine:
             self.logger.log(f"✗ Ошибка запуска: {e}")
             # Cleanup частично поднятых ресурсов
             for task in [self._inspector_task, self._execution_guard_task, self._balance_task,
-                         self._bootstrap_task, self._points_filter_task]:
+                         self._bootstrap_task, self._points_filter_task,
+                         self._auto_sell_monitor_task]:
                 if task and not task.done():
                     task.cancel()
             self._inspector_task = self._execution_guard_task = self._balance_task = \
-                self._bootstrap_task = self._points_filter_task = None
+                self._bootstrap_task = self._points_filter_task = \
+                self._auto_sell_monitor_task = None
             if self.ws:
                 self.ws.stop()
                 self.ws = None
@@ -189,7 +197,8 @@ class BotEngine:
 
         # Отменяем фоновые задачи
         for task in [self._inspector_task, self._execution_guard_task, self._balance_task,
-                     self._bootstrap_task, self._points_filter_task]:
+                     self._bootstrap_task, self._points_filter_task,
+                     self._auto_sell_monitor_task]:
             if task and not task.done():
                 task.cancel()
 
@@ -494,11 +503,22 @@ class BotEngine:
                                     f"Цена {order.price*100:.1f}¢ × {order.shares:.1f} шт "
                                     f"(жила {life_str}{market_ctx})"
                                 )
+                                # Сохраняем заполненный ордер до сброса
+                                filled_order = order
+
                                 # Сбрасываем запись об ордере
                                 if side == "yes":
                                     worker.order_yes = None
                                 else:
                                     worker.order_no = None
+
+                                # Запускаем авто-продажу если включена
+                                import config as cfg
+                                auto_sell_active = cfg.AUTO_SELL_ENABLED
+                                if auto_sell_active:
+                                    asyncio.create_task(self._trigger_auto_sell(
+                                        worker, side, filled_order
+                                    ))
 
                                 # Telegram уведомление
                                 tg_msg = (
@@ -511,7 +531,7 @@ class BotEngine:
                                 )
                                 if market_ctx:
                                     tg_msg += f"Рынок: {market_ctx.lstrip(', ')}\n"
-                                tg_msg += "❗ Закрой позицию вручную"
+                                tg_msg += "🔄 Авто-продажа запускается..." if auto_sell_active else "❗ Закрой позицию вручную"
                                 await self._send_telegram(tg_msg)
 
                                 self.event_bus.emit({
@@ -647,6 +667,112 @@ class BotEngine:
 
             except Exception as e:
                 self.logger.log(f"[Bootstrap] ✗ {e}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Auto-sell
+    # ─────────────────────────────────────────────────────────────────────────
+
+    async def _trigger_auto_sell(self, worker, side: str, order):
+        """
+        Запускается как task после исполнения лимитки.
+        Ждёт delay, затем выставляет sell limit по формуле:
+        sell_price = fill_price * (1 - max_loss_pct / 100), округлено вверх до тика.
+        """
+        import config as cfg
+        delay = cfg.AUTO_SELL_DELAY_SEC
+        max_loss = cfg.AUTO_SELL_MAX_LOSS_PCT
+
+        if delay > 0:
+            await asyncio.sleep(delay)
+
+        if not self.running or not self.order_manager:
+            return
+
+        title = worker.market_info.get("question") or worker.market_info.get("title", worker.market_id)
+        order_hash = await self.order_manager.place_sell_limit_auto(
+            market_id=worker.market_id,
+            side=side,
+            shares=order.shares,
+            fill_price=order.price,
+            max_loss_pct=max_loss,
+        )
+        if order_hash:
+            market_info = self._market_info_cache.get(worker.market_id, {})
+            dp = market_info.get("decimalPrecision", 3)
+            import math
+            tick = 1 / (10 ** dp)
+            min_sell = order.price * (1 - max_loss / 100)
+            sell_price = round(math.ceil(min_sell / tick) * tick, dp)
+
+            self._auto_sell_pending[order_hash] = {
+                "market_id": worker.market_id,
+                "title": title,
+                "side": side,
+                "fill_price": order.price,
+                "sell_price": sell_price,
+                "shares": order.shares,
+                "placed_at": time.time(),
+            }
+            await self._send_telegram(
+                f"📤 Авто-продажа выставлена!\n"
+                f"Маркет: {title[:60]}\n"
+                f"Продажа: {sell_price*100:.1f}¢ × {order.shares:.1f} шт\n"
+                f"Куплено: {order.price*100:.1f}¢ | Макс.потери: {max_loss}%"
+            )
+        else:
+            await self._send_telegram(
+                f"⚠ Авто-продажа НЕ УДАЛАСЬ!\n"
+                f"Маркет: {title[:60]}\n"
+                f"Закрой позицию {side.upper()} вручную: {order.shares:.1f} шт"
+            )
+
+    async def _auto_sell_monitor_loop(self):
+        """Каждые 5 сек: проверяет исполнились ли ордера авто-продажи."""
+        while self.running:
+            await asyncio.sleep(5)
+            if not self._auto_sell_pending or not self.api:
+                continue
+            try:
+                open_orders = await self.api.get_open_orders()
+                if open_orders is None:
+                    continue
+                open_ids = {str(o.get("id") or o.get("orderId")) for o in open_orders}
+
+                for order_hash in list(self._auto_sell_pending.keys()):
+                    if order_hash in open_ids:
+                        continue
+                    detail = await self.api.get_order(order_hash)
+                    if not detail:
+                        continue
+
+                    status = detail.get("status")
+                    info = self._auto_sell_pending.get(order_hash, {})
+
+                    if status == "FILLED":
+                        self._auto_sell_pending.pop(order_hash, None)
+                        self.logger.log(
+                            f"[AutoSell] [{info.get('market_id')}] ✓ Позиция продана! "
+                            f"{info.get('side','').upper()} по {info.get('sell_price',0)*100:.1f}¢"
+                        )
+                        await self._send_telegram(
+                            f"✅ Авто-продажа исполнена!\n"
+                            f"Маркет: {info.get('title','')[:60]}\n"
+                            f"Продано: {info.get('sell_price',0)*100:.1f}¢ × {info.get('shares',0):.1f} шт"
+                        )
+                    elif status in {"CANCELLED", "EXPIRED", "REJECTED"}:
+                        self._auto_sell_pending.pop(order_hash, None)
+                        self.logger.log(
+                            f"[AutoSell] [{info.get('market_id')}] Ордер на продажу {status} — "
+                            f"закрой позицию {info.get('side','').upper()} вручную!"
+                        )
+                        await self._send_telegram(
+                            f"⚠ Ордер авто-продажи {status}!\n"
+                            f"Маркет: {info.get('title','')[:60]}\n"
+                            f"Закрой позицию {info.get('side','').upper()} вручную: "
+                            f"{info.get('shares',0):.1f} шт"
+                        )
+            except Exception as e:
+                self.logger.log(f"[AutoSell Monitor] ✗ {e}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Points filter

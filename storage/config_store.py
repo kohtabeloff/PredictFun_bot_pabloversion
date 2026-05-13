@@ -20,6 +20,9 @@ _DEFAULTS = {
     "ui_password": "",  # пустой = защита отключена
     "predict_points_only": False,
     "predict_points_poll_sec": 600,
+    "auto_sell_enabled": False,
+    "auto_sell_max_loss_pct": 15.0,
+    "auto_sell_delay_sec": 0.0,
 }
 
 

@@ -198,6 +198,9 @@ class BotConfigRequest(BaseModel):
     ui_password: str | None = None
     predict_points_only: bool | None = None
     predict_points_poll_sec: int | None = None
+    auto_sell_enabled: bool | None = None
+    auto_sell_max_loss_pct: float | None = None
+    auto_sell_delay_sec: float | None = None
 
 
 @app.get("/api/config")
@@ -226,6 +229,9 @@ async def save_config(req: BotConfigRequest):
     cfg.TELEGRAM_CHAT_ID = data.get("telegram_chat_id", "")
     cfg.POINTS_FILTER_ENABLED = bool(data.get("predict_points_only", False))
     cfg.POINTS_POLL_INTERVAL_SEC = int(data.get("predict_points_poll_sec", 600))
+    cfg.AUTO_SELL_ENABLED = bool(data.get("auto_sell_enabled", False))
+    cfg.AUTO_SELL_MAX_LOSS_PCT = float(data.get("auto_sell_max_loss_pct", 15.0))
+    cfg.AUTO_SELL_DELAY_SEC = float(data.get("auto_sell_delay_sec", 0.0))
     return {"ok": True, "restart_required": any(
         k in updates for k in ("api_key", "predict_account_address", "privy_wallet_private_key", "proxy")
     )}

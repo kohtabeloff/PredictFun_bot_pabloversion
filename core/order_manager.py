@@ -347,3 +347,46 @@ class OrderManager:
 
         self.log_func(f"[{market_id}] ✗ Авто-продажа не удалась: {resp}")
         return False
+
+    async def place_sell_limit_auto(
+        self, market_id: str, side: str, shares: float,
+        fill_price: float, max_loss_pct: float,
+    ) -> str | None:
+        """
+        Размещает лимитный ордер на продажу с контролируемыми потерями.
+        Цена: fill_price * (1 - max_loss_pct/100), округлённая вверх до тика.
+        Возвращает order_hash при успехе, None при ошибке.
+        """
+        import math
+        if shares <= 0:
+            return None
+        market_info = self.market_info_cache.get(market_id)
+        if not market_info:
+            self.log_func(f"[{market_id}] ✗ place_sell_limit_auto: нет info о маркете")
+            return None
+
+        dp = market_info.get("decimalPrecision", 3)
+        tick = 1 / (10 ** dp)
+        min_sell = fill_price * (1 - max_loss_pct / 100)
+        # Округляем ВВЕРХ — мы не хотим продавать дешевле минимума
+        sell_price = math.ceil(min_sell / tick) * tick
+        sell_price = round(max(MIN_ORDER_PRICE, min(sell_price, MAX_ORDER_PRICE)), dp)
+
+        self.log_func(
+            f"[{market_id}] 📤 Авто-продажа {side.upper()} {shares:.2f} шт "
+            f"лимит {sell_price*100:.1f}¢ (куплено {fill_price*100:.1f}¢, макс.потери={max_loss_pct}%)"
+        )
+
+        result = await self._build_and_sign(market_id, side, sell_price, shares, order_side="sell")
+        if result is None:
+            self.log_func(f"[{market_id}] ✗ Авто-продажа: не удалось подписать ордер")
+            return None
+
+        body, order_hash = result
+        resp = await self.api.place_order(body)
+        if resp and isinstance(resp, dict) and resp.get("success"):
+            self.log_func(f"[{market_id}] ✓ Ордер на продажу выставлен (hash={order_hash[:10]}...)")
+            return order_hash
+
+        self.log_func(f"[{market_id}] ✗ place_sell_limit_auto не удалась: {resp}")
+        return None
