@@ -46,7 +46,7 @@ MAX_ORDER_PRICE = 0.999
 AMOUNT_PRECISION = 10**13  # округление wei
 
 # WebSocket Pool
-WS_POOL_SIZE = 1                         # кол-во одновременных соединений (тест)
+WS_POOL_SIZE = 20                        # кол-во одновременных соединений
 WS_POOL_REBALANCE_INTERVAL_SEC = 120     # как часто перезапускать медленные слоты (сек)
 WS_POOL_SLOW_SLOTS_PER_REBALANCE = 5    # сколько медленных слотов заменять за раз
 WS_POOL_DEDUPE_WINDOW_SEC = 0.04        # окно дедупликации одинаковых обновлений (40 мс)

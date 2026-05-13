@@ -295,6 +295,7 @@ class _PoolSlot:
         self._connected = False
         self._running = False
         self._task: asyncio.Task | None = None
+        self._send_lock = asyncio.Lock()
         self.wins: int = 0  # сколько раз этот слот первым доставил уникальное обновление
 
     @property
@@ -320,14 +321,16 @@ class _PoolSlot:
                 "params": [f"predictOrderbook/{market_id}"],
             }
             try:
-                await self._ws.send_str(json.dumps(msg))
+                async with self._send_lock:
+                    await self._ws.send_str(json.dumps(msg))
             except Exception:
                 pass
 
     async def _send_heartbeat(self, ts):
         if self._ws:
             try:
-                await self._ws.send_str(json.dumps({"method": "heartbeat", "data": ts}))
+                async with self._send_lock:
+                    await self._ws.send_str(json.dumps({"method": "heartbeat", "data": ts}))
             except Exception:
                 pass
 
@@ -356,15 +359,10 @@ class _PoolSlot:
                             if i + 25 < len(subs):
                                 await asyncio.sleep(0.2)
 
-                        _msg_count = 0
-                        _ob_count = 0
                         async for message in ws:
                             if not self._running:
                                 break
-                            if _msg_count == 0:
-                                self.log_func(f"[WS Pool slot={self.slot_id}] первое сообщение: type={message.type}, data={str(message.data)[:100]}")
                             if message.type == aiohttp.WSMsgType.TEXT:
-                                _msg_count += 1
                                 try:
                                     data = json.loads(message.data)
                                 except json.JSONDecodeError:
@@ -377,15 +375,10 @@ class _PoolSlot:
                                     topic = data.get("topic", "")
                                     if topic == "heartbeat":
                                         await self._send_heartbeat(data.get("data"))
-                                        if _msg_count <= 5:
-                                            self.log_func(f"[WS Pool slot={self.slot_id}] heartbeat #{_msg_count}")
                                         continue
                                     if topic.startswith("predictOrderbook/"):
                                         market_id = topic.split("/", 1)[1]
                                         ob = data.get("data", {})
-                                        _ob_count += 1
-                                        if _ob_count <= 3:
-                                            self.log_func(f"[WS Pool slot={self.slot_id}] orderbook {market_id}: bids={len(ob.get('bids') or [])}, asks={len(ob.get('asks') or [])}")
                                         if ob and (ob.get("bids") or ob.get("asks")):
                                             self._on_update(self.slot_id, market_id, ob)
 
