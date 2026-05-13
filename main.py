@@ -83,10 +83,10 @@ async def main():
     cfg.TELEGRAM_TOKEN = saved.get("telegram_token", "") or cfg.TELEGRAM_TOKEN
     cfg.TELEGRAM_CHAT_ID = saved.get("telegram_chat_id", "") or cfg.TELEGRAM_CHAT_ID
     cfg.POINTS_FILTER_ENABLED = bool(saved.get("predict_points_only", False))
-    cfg.POINTS_POLL_INTERVAL_SEC = int(saved.get("predict_points_poll_sec", 600))
+    cfg.POINTS_POLL_INTERVAL_SEC = max(60, min(7200, int(saved.get("predict_points_poll_sec", 600))))
     cfg.AUTO_SELL_ENABLED = bool(saved.get("auto_sell_enabled", False))
-    cfg.AUTO_SELL_MAX_LOSS_PCT = float(saved.get("auto_sell_max_loss_pct", 15.0))
-    cfg.AUTO_SELL_DELAY_SEC = float(saved.get("auto_sell_delay_sec", 0.0))
+    cfg.AUTO_SELL_MAX_LOSS_PCT = max(0.1, min(95.0, float(saved.get("auto_sell_max_loss_pct", 15.0))))
+    cfg.AUTO_SELL_DELAY_SEC = max(0.0, min(3600.0, float(saved.get("auto_sell_delay_sec", 0.0))))
 
     from config import WEB_HOST
     port = _parse_port()
