@@ -43,6 +43,11 @@ class BotEngine:
         self._execution_guard_task: asyncio.Task | None = None
         self._balance_task: asyncio.Task | None = None
         self._bootstrap_task: asyncio.Task | None = None
+        self._points_filter_task: asyncio.Task | None = None
+
+        # Points filter: markets temporarily paused because they have no active reward
+        self._points_blocked: set[str] = set()
+        self._market_points_status: dict[str, bool | None] = {}  # None = not checked yet
 
         self.running = False
         self._state = "stopped"  # stopped | starting | running | stopping
@@ -118,6 +123,7 @@ class BotEngine:
             self._execution_guard_task = asyncio.create_task(self._execution_guard_loop())
             self._balance_task = asyncio.create_task(self._balance_loop())
             self._bootstrap_task = asyncio.create_task(self._bootstrap_orderbooks_loop())
+            self._points_filter_task = asyncio.create_task(self._points_filter_loop())
 
             self.running = True
             self._state = "running"
@@ -127,10 +133,12 @@ class BotEngine:
         except Exception as e:
             self.logger.log(f"✗ Ошибка запуска: {e}")
             # Cleanup частично поднятых ресурсов
-            for task in [self._inspector_task, self._execution_guard_task, self._balance_task, self._bootstrap_task]:
+            for task in [self._inspector_task, self._execution_guard_task, self._balance_task,
+                         self._bootstrap_task, self._points_filter_task]:
                 if task and not task.done():
                     task.cancel()
-            self._inspector_task = self._execution_guard_task = self._balance_task = self._bootstrap_task = None
+            self._inspector_task = self._execution_guard_task = self._balance_task = \
+                self._bootstrap_task = self._points_filter_task = None
             if self.ws:
                 self.ws.stop()
                 self.ws = None
@@ -180,7 +188,8 @@ class BotEngine:
         self._workers.clear()
 
         # Отменяем фоновые задачи
-        for task in [self._inspector_task, self._execution_guard_task, self._balance_task, self._bootstrap_task]:
+        for task in [self._inspector_task, self._execution_guard_task, self._balance_task,
+                     self._bootstrap_task, self._points_filter_task]:
             if task and not task.done():
                 task.cancel()
 
@@ -326,6 +335,7 @@ class BotEngine:
                 diagnostic=worker.diagnostic,
                 ws_connected=self.ws.connected if self.ws else False,
                 last_update=worker.last_update,
+                has_points=self._market_points_status.get(mid),
             )
             markets[mid] = state
 
@@ -637,6 +647,102 @@ class BotEngine:
 
             except Exception as e:
                 self.logger.log(f"[Bootstrap] ✗ {e}")
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Points filter
+    # ─────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _has_active_points(market_info: dict) -> bool:
+        """Возвращает True если у маркета есть активная почасовая награда в поинтах."""
+        from datetime import datetime, timezone
+        rewards = market_info.get("rewards") or {}
+        current = rewards.get("current") or {}
+        hourly_rate = current.get("hourlyRate") or 0
+        if hourly_rate <= 0:
+            return False
+        starts_at = current.get("startsAt")
+        ends_at = current.get("endsAt")
+        if starts_at and ends_at:
+            try:
+                now = datetime.now(timezone.utc)
+                start = datetime.fromisoformat(starts_at.replace("Z", "+00:00"))
+                end = datetime.fromisoformat(ends_at.replace("Z", "+00:00"))
+                return start <= now < end
+            except Exception:
+                pass
+        return hourly_rate > 0
+
+    async def _points_filter_loop(self):
+        """
+        Каждые POINTS_POLL_INTERVAL_SEC обновляет инфо по маркетам и проверяет поинты.
+        Если POINTS_FILTER_ENABLED=False — просто спит и перепроверяет.
+        Если поинты пропали — отменяет ордера и приостанавливает маркет.
+        Если поинты вернулись — возобновляет маркет (восстанавливает enabled из settings).
+        """
+        await asyncio.sleep(30)  # даём время маркетам загрузиться
+
+        while self.running:
+            try:
+                import config as cfg
+                if not cfg.POINTS_FILTER_ENABLED:
+                    await asyncio.sleep(60)
+                    continue
+
+                await self._check_all_markets_points()
+
+            except Exception as e:
+                self.logger.log(f"[PointsFilter] ✗ {e}")
+
+            import config as cfg
+            await asyncio.sleep(cfg.POINTS_POLL_INTERVAL_SEC)
+
+    async def _check_all_markets_points(self):
+        """Проверяет поинты для всех активных маркетов и обновляет статус."""
+        if not self.api:
+            return
+
+        for market_id, worker in list(self._workers.items()):
+            if not self.running:
+                break
+
+            info = await self.api.get_market(market_id)
+            if info is None:
+                await asyncio.sleep(0.5)
+                continue
+
+            self._market_info_cache[market_id] = info
+            has_points = self._has_active_points(info)
+            was_blocked = market_id in self._points_blocked
+            self._market_points_status[market_id] = has_points
+
+            if not has_points and not was_blocked:
+                # Поинты пропали — приостанавливаем маркет
+                self._points_blocked.add(market_id)
+                self.logger.log(
+                    f"[PointsFilter] [{market_id}] Нет активных поинтов — "
+                    f"приостанавливаю (ордера отменяю)"
+                )
+                worker.settings = worker.settings.model_copy(update={"enabled": False})
+                ids = worker.get_active_order_ids()
+                if ids and self.order_manager:
+                    await self.order_manager.cancel_orders(ids, market_id=market_id)
+                worker.order_yes = None
+                worker.order_no = None
+
+            elif has_points and was_blocked:
+                # Поинты вернулись — восстанавливаем
+                self._points_blocked.discard(market_id)
+                saved = self.settings_store.get(market_id)
+                self.logger.log(
+                    f"[PointsFilter] [{market_id}] Поинты появились — возобновляю"
+                )
+                worker.settings = worker.settings.model_copy(update={"enabled": saved.enabled})
+                if saved.enabled:
+                    worker.schedule_reprocess()
+
+            self._broadcast_state()
+            await asyncio.sleep(0.5)  # небольшая пауза между запросами
 
     async def _send_telegram(self, message: str):
         from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID

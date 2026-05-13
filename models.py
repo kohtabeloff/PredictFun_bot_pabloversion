@@ -86,6 +86,7 @@ class MarketState(BaseModel):
     diagnostic: str = ""
     ws_connected: bool = False
     last_update: float = 0.0
+    has_points: bool | None = None  # None = ещё не проверено; False = нет активных поинтов
 
 
 class AccountInfo(BaseModel):

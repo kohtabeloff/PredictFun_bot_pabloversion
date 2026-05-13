@@ -78,10 +78,12 @@ async def main():
     app.state.logger = logger
     app.state.config_store = config_store
 
-    # Применяем Telegram из сохранённых настроек
+    # Применяем настройки из сохранённого конфига
     import config as cfg
     cfg.TELEGRAM_TOKEN = saved.get("telegram_token", "") or cfg.TELEGRAM_TOKEN
     cfg.TELEGRAM_CHAT_ID = saved.get("telegram_chat_id", "") or cfg.TELEGRAM_CHAT_ID
+    cfg.POINTS_FILTER_ENABLED = bool(saved.get("predict_points_only", False))
+    cfg.POINTS_POLL_INTERVAL_SEC = int(saved.get("predict_points_poll_sec", 600))
 
     from config import WEB_HOST
     port = _parse_port()

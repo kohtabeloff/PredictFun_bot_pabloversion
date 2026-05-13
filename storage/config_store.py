@@ -18,6 +18,8 @@ _DEFAULTS = {
     "telegram_token": "",
     "telegram_chat_id": "",
     "ui_password": "",  # пустой = защита отключена
+    "predict_points_only": False,
+    "predict_points_poll_sec": 600,
 }
 
 

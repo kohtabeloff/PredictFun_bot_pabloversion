@@ -196,6 +196,8 @@ class BotConfigRequest(BaseModel):
     telegram_token: str | None = None
     telegram_chat_id: str | None = None
     ui_password: str | None = None
+    predict_points_only: bool | None = None
+    predict_points_poll_sec: int | None = None
 
 
 @app.get("/api/config")
@@ -222,6 +224,8 @@ async def save_config(req: BotConfigRequest):
     import config as cfg
     cfg.TELEGRAM_TOKEN = data.get("telegram_token", "")
     cfg.TELEGRAM_CHAT_ID = data.get("telegram_chat_id", "")
+    cfg.POINTS_FILTER_ENABLED = bool(data.get("predict_points_only", False))
+    cfg.POINTS_POLL_INTERVAL_SEC = int(data.get("predict_points_poll_sec", 600))
     return {"ok": True, "restart_required": any(
         k in updates for k in ("api_key", "predict_account_address", "privy_wallet_private_key", "proxy")
     )}

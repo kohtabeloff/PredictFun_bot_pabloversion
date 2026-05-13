@@ -52,6 +52,10 @@ WS_POOL_SLOW_SLOTS_PER_REBALANCE = 5    # сколько медленных сл
 WS_POOL_DEDUPE_WINDOW_SEC = 0.04        # окно дедупликации одинаковых обновлений (40 мс)
 WS_POOL_CONNECT_STAGGER_MS = 80         # пауза между стартами слотов (мс), защита от 429
 
+# Points Filter
+POINTS_FILTER_ENABLED = False   # фильтр выкл по умолчанию — включается из UI
+POINTS_POLL_INTERVAL_SEC = 600  # как часто перепроверять поинты (10 мин)
+
 # Inspector
 INSPECTOR_INTERVAL_SEC = 10
 EXECUTION_GUARD_INTERVAL_SEC = 3
