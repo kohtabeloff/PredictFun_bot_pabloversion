@@ -9,7 +9,7 @@ import time
 from typing import Callable
 
 from api.client import APIClient
-from api.websocket import PredictWebSocket
+from api.websocket import WebSocketPool
 from core.calculator import Calculator
 from core.market_worker import MarketWorker
 from core.order_manager import OrderManager
@@ -32,7 +32,7 @@ class BotEngine:
         self.logger = logger
 
         self.api: APIClient | None = None
-        self.ws: PredictWebSocket | None = None
+        self.ws: WebSocketPool | None = None
         self.order_manager: OrderManager | None = None
 
         self._workers: dict[str, MarketWorker] = {}
@@ -95,11 +95,21 @@ class BotEngine:
                 log_func=self.logger,
             )
 
-            # WebSocket
-            self.ws = PredictWebSocket(
+            # WebSocket Pool
+            from config import (
+                WS_POOL_SIZE, WS_POOL_REBALANCE_INTERVAL_SEC,
+                WS_POOL_SLOW_SLOTS_PER_REBALANCE, WS_POOL_DEDUPE_WINDOW_SEC,
+                WS_POOL_CONNECT_STAGGER_MS,
+            )
+            self.ws = WebSocketPool(
                 api_key=self.account.api_key,
                 log_func=self.logger,
                 proxy=self.account.proxy or None,
+                pool_size=WS_POOL_SIZE,
+                rebalance_interval_sec=WS_POOL_REBALANCE_INTERVAL_SEC,
+                slow_slots_per_rebalance=WS_POOL_SLOW_SLOTS_PER_REBALANCE,
+                dedupe_window_sec=WS_POOL_DEDUPE_WINDOW_SEC,
+                connect_stagger_ms=WS_POOL_CONNECT_STAGGER_MS,
             )
             self.ws.start()
 
