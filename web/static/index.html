@@ -565,6 +565,8 @@
     <button class="btn-cancel" onclick="cancelAll()" data-i18n="btn_cancel_all">✕ Отменить все ордера</button>
     <button class="btn-delete" style="padding:6px 14px;font-size:12px" onclick="removeAllMarkets()" data-i18n="btn_delete_all">🗑 Удалить все маркеты</button>
     <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="exportMarkets()" data-i18n="btn_export">⬇ Экспорт списка</button>
+    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="importMarketsClick()" data-i18n="btn_import">⬆ Импорт</button>
+    <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importMarketsFile(this)">
     <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="openBotSettings()" data-i18n="btn_settings_hdr">⚙ Настройки</button>
     <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="window.open('http://'+location.hostname+':8000','_blank')" data-i18n="btn_manager">⚡ Менеджер</button>
   </div>
@@ -766,8 +768,18 @@ const T = {
     confirm_delete_market: 'Удалить рынок {id}?',
     confirm_delete_all: 'Удалить все {n} маркетов? Ордера будут отменены.',
     no_markets_export: 'Нет маркетов для экспорта',
+    no_markets_import: 'Не удалось прочитать файл импорта',
+    imported_n: 'Импортировано: {n} маркетов',
     no_markets_delete: 'Нет маркетов для удаления',
     no_markets_loaded: 'Нет загруженных маркетов',
+    btn_import: '⬆ Импорт',
+    section_points: 'Фильтр поинтов',
+    lbl_points_only: 'Ставить ордера только в маркеты с наградой (поинты)',
+    lbl_points_poll: 'Проверять каждые N секунд (60–7200)',
+    section_autosell: 'Авто-продажа',
+    lbl_autosell_enabled: 'Продавать позицию автоматически после исполнения',
+    lbl_autosell_loss: 'Макс. потеря при продаже, %',
+    lbl_autosell_delay: 'Задержка перед продажей, сек',
     market_added: '✓ Рынок {id} добавлен',
     market_already: 'Рынок {id}: уже добавлен',
     market_error: '✗ Рынок {id}: {status}',
@@ -851,8 +863,18 @@ const T = {
     confirm_delete_market: 'Remove market {id}?',
     confirm_delete_all: 'Remove all {n} markets? Orders will be cancelled.',
     no_markets_export: 'No markets to export',
+    no_markets_import: 'Could not read import file',
+    imported_n: 'Imported: {n} markets',
     no_markets_delete: 'No markets to remove',
     no_markets_loaded: 'No markets loaded',
+    btn_import: '⬆ Import',
+    section_points: 'Points filter',
+    lbl_points_only: 'Place orders only in markets with reward (points)',
+    lbl_points_poll: 'Check every N seconds (60–7200)',
+    section_autosell: 'Auto-sell',
+    lbl_autosell_enabled: 'Automatically sell position after fill',
+    lbl_autosell_loss: 'Max loss on sell, %',
+    lbl_autosell_delay: 'Delay before sell, sec',
     market_added: '✓ Market {id} added',
     market_already: 'Market {id}: already added',
     market_error: '✗ Market {id}: {status}',
@@ -999,6 +1021,32 @@ function exportMarkets() {
   a.download = 'markets.txt';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+function importMarketsClick() {
+  document.getElementById('import-file-input').click();
+}
+
+async function importMarketsFile(input) {
+  const file = input.files[0];
+  input.value = '';
+  if (!file) return;
+  let json;
+  try {
+    json = JSON.parse(await file.text());
+  } catch {
+    appendLog('WARN', t('no_markets_import'));
+    return;
+  }
+  const res = await apiFetch('POST', '/api/markets/import', json);
+  if (res) {
+    const ok = Object.values(res).filter(v => v === 'ok' || v === 'already_exists').length;
+    appendLog('INFO', t('imported_n', { n: ok }));
+    Object.entries(res).forEach(([id, status]) => {
+      if (status !== 'ok' && status !== 'already_exists')
+        appendLog('WARN', t('market_error', { id, status }));
+    });
+  }
 }
 
 async function removeAllMarkets() {
@@ -1662,6 +1710,12 @@ async function openBotSettings() {
   document.getElementById('cfg-tg-chat').value       = data.telegram_chat_id || '';
   document.getElementById('cfg-ui-password').value   = '';
 
+  document.getElementById('cfg-points-only').checked    = !!data.predict_points_only;
+  document.getElementById('cfg-points-poll').value       = data.predict_points_poll_sec ?? 600;
+  document.getElementById('cfg-autosell-enabled').checked = !!data.auto_sell_enabled;
+  document.getElementById('cfg-autosell-loss').value     = data.auto_sell_max_loss_pct ?? 15;
+  document.getElementById('cfg-autosell-delay').value    = data.auto_sell_delay_sec ?? 0;
+
   _updateModalLabels();
   document.getElementById('bot-settings-modal').classList.add('open');
 }
@@ -1679,6 +1733,11 @@ async function saveBotSettings() {
     telegram_token:           document.getElementById('cfg-tg-token').value.trim(),
     telegram_chat_id:         document.getElementById('cfg-tg-chat').value.trim(),
     ui_password:              document.getElementById('cfg-ui-password').value,
+    predict_points_only:      document.getElementById('cfg-points-only').checked,
+    predict_points_poll_sec:  parseInt(document.getElementById('cfg-points-poll').value) || 600,
+    auto_sell_enabled:        document.getElementById('cfg-autosell-enabled').checked,
+    auto_sell_max_loss_pct:   parseFloat(document.getElementById('cfg-autosell-loss').value) || 15,
+    auto_sell_delay_sec:      parseFloat(document.getElementById('cfg-autosell-delay').value) || 0,
   };
 
   const hint = document.getElementById('cfg-hint');
@@ -1745,6 +1804,34 @@ async function saveBotSettings() {
       <div class="modal-field">
         <label>Chat ID</label>
         <input id="cfg-tg-chat" type="text" placeholder="-1001234567890">
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title" data-i18n="section_points">Фильтр поинтов</div>
+      <div class="modal-field" style="flex-direction:row;align-items:center;gap:8px">
+        <input type="checkbox" id="cfg-points-only" style="width:auto;margin:0">
+        <label for="cfg-points-only" data-i18n="lbl_points_only" style="cursor:pointer">Ставить ордера только в маркеты с наградой (поинты)</label>
+      </div>
+      <div class="modal-field">
+        <label data-i18n="lbl_points_poll">Проверять каждые N секунд (60–7200)</label>
+        <input id="cfg-points-poll" type="number" min="60" max="7200" step="60" value="600" placeholder="600">
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title" data-i18n="section_autosell">Авто-продажа</div>
+      <div class="modal-field" style="flex-direction:row;align-items:center;gap:8px">
+        <input type="checkbox" id="cfg-autosell-enabled" style="width:auto;margin:0">
+        <label for="cfg-autosell-enabled" data-i18n="lbl_autosell_enabled" style="cursor:pointer">Продавать позицию автоматически после исполнения</label>
+      </div>
+      <div class="modal-field">
+        <label data-i18n="lbl_autosell_loss">Макс. потеря при продаже, %</label>
+        <input id="cfg-autosell-loss" type="number" min="0.1" max="95" step="0.1" value="15" placeholder="15">
+      </div>
+      <div class="modal-field">
+        <label data-i18n="lbl_autosell_delay">Задержка перед продажей, сек</label>
+        <input id="cfg-autosell-delay" type="number" min="0" max="3600" step="1" value="0" placeholder="0">
       </div>
     </div>
 
