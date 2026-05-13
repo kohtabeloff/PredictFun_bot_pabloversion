@@ -113,7 +113,7 @@ class PredictWebSocket:
                         for mid in list(remaining):
                             msg = {
                                 "method": "subscribe",
-                                "requestId": f"bootstrap-{mid}",
+                                "requestId": id(mid),
                                 "params": [f"predictOrderbook/{mid}"],
                             }
                             await ws.send_str(json.dumps(msg))
@@ -317,7 +317,7 @@ class _PoolSlot:
         if self._ws:
             msg = {
                 "method": "subscribe",
-                "requestId": f"s{self.slot_id}-{market_id}",
+                "requestId": id(market_id),
                 "params": [f"predictOrderbook/{market_id}"],
             }
             try:
@@ -525,7 +525,7 @@ class WebSocketPool:
                         for mid in list(remaining):
                             await ws.send_str(json.dumps({
                                 "method": "subscribe",
-                                "requestId": f"bootstrap-{mid}",
+                                "requestId": id(mid),
                                 "params": [f"predictOrderbook/{mid}"],
                             }))
                         async for message in ws:
@@ -568,7 +568,7 @@ class WebSocketPool:
                     async with session.ws_connect(self._url, **ws_kwargs) as ws:
                         await ws.send_str(json.dumps({
                             "method": "subscribe",
-                            "requestId": f"bootstrap-{market_id}",
+                            "requestId": id(market_id),
                             "params": [f"predictOrderbook/{market_id}"],
                         }))
                         async for message in ws:
