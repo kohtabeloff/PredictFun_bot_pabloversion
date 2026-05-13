@@ -263,6 +263,74 @@ async def remove_all_markets():
     return {"ok": True}
 
 
+@app.get("/api/markets/export")
+async def export_markets():
+    """
+    Возвращает JSON со всеми рынками и их настройками.
+    Формат: {"version": 1, "markets": [{market_id, ...settings}]}
+    """
+    engine = app.state.engine
+    all_settings = engine.settings_store.all()
+    markets = []
+    for mid, s in all_settings.items():
+        entry = s.model_dump()
+        markets.append(entry)
+    return {"version": 1, "markets": markets}
+
+
+class ImportMarketsRequest(BaseModel):
+    markets: list[dict]
+    apply_settings: bool = True
+
+
+@app.post("/api/markets/import")
+async def import_markets(req: ImportMarketsRequest):
+    """
+    Загружает рынки из экспортированного JSON.
+    apply_settings=True — применяет настройки из файла.
+    apply_settings=False — загружает только market_id, настройки игнорирует.
+    """
+    engine = app.state.engine
+    if not engine.running:
+        raise HTTPException(400, "Бот не запущен — сначала запусти бот")
+
+    results = {}
+    market_ids = []
+    settings_by_id: dict[str, dict] = {}
+
+    for entry in req.markets:
+        mid = str(entry.get("market_id") or entry.get("id") or "").strip()
+        if not mid:
+            continue
+        market_ids.append(mid)
+        if req.apply_settings:
+            settings_by_id[mid] = entry
+
+    if not market_ids:
+        raise HTTPException(400, "Нет валидных market_id в запросе")
+
+    # Применяем настройки до добавления (чтобы новые маркеты стартовали с нужными настройками)
+    if req.apply_settings:
+        for mid, entry in settings_by_id.items():
+            allowed_fields = {
+                "enabled", "side", "position_size_usdt", "position_size_shares",
+                "min_spread", "target_liquidity", "max_auto_spread", "liquidity_mode",
+                "volatile_reposition_limit", "volatile_window_seconds",
+                "volatile_cooldown_seconds", "min_orders_before",
+            }
+            updates = {k: v for k, v in entry.items() if k in allowed_fields and v is not None}
+            if updates:
+                engine.settings_store.update(mid, **updates)
+
+    add_results = await engine.add_markets(market_ids, force_disabled=not req.apply_settings)
+    for mid, res in add_results.items():
+        results[mid] = res
+
+    ok = sum(1 for v in results.values() if v in ("ok", "already_exists"))
+    errors = {mid: v for mid, v in results.items() if "error" in str(v)}
+    return {"ok": True, "loaded": ok, "total": len(market_ids), "errors": errors}
+
+
 async def _restore_saved_markets(engine, force_disabled: bool = False):
     """Фоновая задача: восстанавливает маркеты из settings.json после старта бота.
     force_disabled=True — маркеты загружаются в выключенном состоянии (ручной запуск).
