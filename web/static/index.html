@@ -742,8 +742,9 @@
     <div class="hdr-more" id="hdr-more">
       <button class="btn-secondary" onclick="toggleMoreMenu()" style="padding:6px 10px;letter-spacing:2px">···</button>
       <div class="more-menu" id="more-menu">
-        <button onclick="exportMarkets();closeMoreMenu()" data-i18n="btn_export">↓ Экспорт</button>
-        <button onclick="importMarketsClick();closeMoreMenu()" data-i18n="btn_import">↑ Импорт</button>
+        <button onclick="exportMarkets();closeMoreMenu()" data-i18n="btn_export">↓ Экспорт списка</button>
+        <button onclick="exportMarketsWithSettings();closeMoreMenu()" data-i18n="btn_export_settings">↓ Экспорт с настройками</button>
+        <button onclick="importMarketsClick();closeMoreMenu()" data-i18n="btn_import">↑ Импорт с настройками</button>
       </div>
     </div>
     <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importMarketsFile(this)">
@@ -891,7 +892,8 @@ const T = {
     btn_run_all: 'Запустить все',
     btn_cancel_all: 'Отменить ордера',
     btn_delete_all: 'Удалить все',
-    btn_export: '↓ Экспорт',
+    btn_export: '↓ Экспорт списка',
+    btn_export_settings: '↓ Экспорт с настройками',
     btn_settings_hdr: 'Аккаунт',
     btn_params_hdr: 'Параметры',
     btn_manager: 'Менеджер',
@@ -948,11 +950,11 @@ const T = {
     confirm_delete_market: 'Удалить рынок {id}?',
     confirm_delete_all: 'Удалить все {n} маркетов? Ордера будут отменены.',
     no_markets_export: 'Нет маркетов для экспорта',
-    no_markets_import: 'Не удалось прочитать файл импорта',
+    no_markets_import: 'Не удалось прочитать файл — нужен .json от "Экспорт с настройками"',
     imported_n: 'Импортировано: {n} маркетов',
     no_markets_delete: 'Нет маркетов для удаления',
     no_markets_loaded: 'Нет загруженных маркетов',
-    btn_import: '↑ Импорт',
+    btn_import: '↑ Импорт с настройками',
     section_points: 'Фильтр поинтов',
     lbl_points_only: 'Ставить ордера только в маркеты с наградой (поинты)',
     lbl_points_poll: 'Проверять каждые N секунд (60–7200)',
@@ -988,7 +990,8 @@ const T = {
     btn_run_all: 'Enable all',
     btn_cancel_all: 'Cancel orders',
     btn_delete_all: 'Delete all',
-    btn_export: '↓ Export',
+    btn_export: '↓ Export list',
+    btn_export_settings: '↓ Export with settings',
     btn_settings_hdr: 'Account',
     btn_params_hdr: 'Parameters',
     btn_manager: 'Manager',
@@ -1045,11 +1048,11 @@ const T = {
     confirm_delete_market: 'Remove market {id}?',
     confirm_delete_all: 'Remove all {n} markets? Orders will be cancelled.',
     no_markets_export: 'No markets to export',
-    no_markets_import: 'Could not read import file',
+    no_markets_import: 'Could not read file — use .json from "Export with settings"',
     imported_n: 'Imported: {n} markets',
     no_markets_delete: 'No markets to remove',
     no_markets_loaded: 'No markets loaded',
-    btn_import: '↑ Import',
+    btn_import: '↑ Import with settings',
     section_points: 'Points filter',
     lbl_points_only: 'Place orders only in markets with reward (points)',
     lbl_points_poll: 'Check every N seconds (60–7200)',
@@ -1200,6 +1203,7 @@ async function cancelAll() {
 }
 
 function exportMarkets() {
+  // Экспорт только списка ID — для ручного копипаста в строку добавления
   const ids = Object.keys(state.markets);
   if (!ids.length) { appendLog('WARN', t('no_markets_export')); return; }
   const blob = new Blob([ids.join(', ')], { type: 'text/plain' });
@@ -1210,22 +1214,40 @@ function exportMarkets() {
   URL.revokeObjectURL(a.href);
 }
 
+async function exportMarketsWithSettings() {
+  // Экспорт маркетов вместе с настройками — скачивает .json через бэкенд
+  const ids = Object.keys(state.markets);
+  if (!ids.length) { appendLog('WARN', t('no_markets_export')); return; }
+  const data = await apiFetch('GET', '/api/markets/export');
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'markets_with_settings.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function importMarketsClick() {
   document.getElementById('import-file-input').click();
 }
 
 async function importMarketsFile(input) {
+  // Импорт из .json (от "Экспорт с настройками") — добавляет маркеты и применяет настройки
   const file = input.files[0];
   input.value = '';
   if (!file) return;
-  let json;
+  let parsed;
   try {
-    json = JSON.parse(await file.text());
+    parsed = JSON.parse(await file.text());
   } catch {
     appendLog('WARN', t('no_markets_import'));
     return;
   }
-  const res = await apiFetch('POST', '/api/markets/import', json);
+  // Поддерживаем формат {version, markets:[...]} от нашего экспорта
+  const markets = Array.isArray(parsed) ? parsed : (parsed.markets || []);
+  if (!markets.length) { appendLog('WARN', t('no_markets_import')); return; }
+  const res = await apiFetch('POST', '/api/markets/import', { markets, apply_settings: true });
   if (res) {
     const ok = Object.values(res).filter(v => v === 'ok' || v === 'already_exists').length;
     appendLog('INFO', t('imported_n', { n: ok }));
