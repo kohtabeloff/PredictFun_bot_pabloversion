@@ -71,10 +71,6 @@
       gap: 5px;
       font-size: 12px;
       color: var(--text2);
-      background: rgba(0,0,0,.05);
-      padding: 3px 10px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
     }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); transition: background .3s; flex-shrink: 0; }
     .dot.on  { background: var(--accent-green); }
@@ -90,30 +86,29 @@
       display: flex;
       align-items: center;
       gap: 5px;
-      background: rgba(0,0,0,.05);
-      border: 1px solid var(--border);
+      background: rgba(52,199,89,.08);
+      border: 1px solid rgba(52,199,89,.2);
       border-radius: 20px;
       padding: 3px 11px;
       font-size: 12px;
       color: var(--text2);
     }
-    .balance-val { color: var(--accent-green); font-weight: 600; }
+    .balance-val { color: #1a7a35; font-weight: 600; }
     .stat-chip {
-      background: rgba(0,0,0,.05);
-      border: 1px solid var(--border);
+      background: rgba(0,122,255,.07);
+      border: 1px solid rgba(0,122,255,.15);
       padding: 3px 10px;
       border-radius: 20px;
       font-size: 11px;
-      color: var(--text2);
+      color: #005fcc;
+      font-weight: 500;
     }
     .addr-chip {
       font-family: 'SF Mono', 'Consolas', monospace;
       font-size: 11px;
-      color: var(--text2);
-      background: rgba(0,0,0,.05);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 3px 10px;
+      color: var(--text3);
+      background: transparent;
+      padding: 3px 0;
     }
 
     /* ─── HEADER ROW 2 ─── */
@@ -135,10 +130,10 @@
     button:active { transform: scale(.97); }
     button:disabled { opacity: .3; cursor: default; transform: none; }
 
-    .btn-start  { background: var(--accent-green); color: #fff; font-weight: 600; }
-    .btn-start:not(:disabled):hover  { filter: brightness(1.1); }
-    .btn-stop   { background: var(--red); color: #fff; font-weight: 600; }
-    .btn-stop:not(:disabled):hover   { filter: brightness(1.1); }
+    .btn-start  { background: var(--accent-green); color: #fff; font-weight: 600; font-size: 13px; padding: 7px 15px; box-shadow: 0 1px 4px rgba(52,199,89,.35); }
+    .btn-start:not(:disabled):hover  { filter: brightness(1.08); box-shadow: 0 2px 8px rgba(52,199,89,.45); }
+    .btn-stop   { background: var(--red); color: #fff; font-weight: 600; font-size: 13px; padding: 7px 15px; box-shadow: 0 1px 4px rgba(255,59,48,.35); }
+    .btn-stop:not(:disabled):hover   { filter: brightness(1.08); box-shadow: 0 2px 8px rgba(255,59,48,.45); }
 
     .btn-secondary {
       background: rgba(0,0,0,.06);
@@ -221,20 +216,21 @@
     }
     .add-row input {
       flex: 1;
-      background: var(--input-bg);
+      background: var(--surface);
       border: 1px solid var(--border2);
-      border-radius: var(--radius-sm);
+      border-radius: 20px;
       color: var(--text);
-      padding: 7px 12px;
+      padding: 7px 16px;
       font-size: 13px;
       outline: none;
       font-family: inherit;
-      transition: border-color .15s;
+      transition: border-color .15s, box-shadow .15s;
+      box-shadow: 0 1px 3px rgba(0,0,0,.05);
     }
-    .add-row input:focus { border-color: var(--accent-blue); }
-    .add-row input::placeholder { color: var(--text2); }
-    .btn-add { background: var(--accent-blue); color: #fff; padding: 7px 16px; font-size: 13px; font-weight: 600; }
-    .btn-add:hover { filter: brightness(1.1); }
+    .add-row input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(0,122,255,.12); }
+    .add-row input::placeholder { color: var(--text3); }
+    .btn-add { background: var(--accent-blue); color: #fff; padding: 7px 18px; font-size: 13px; font-weight: 600; border-radius: 20px; box-shadow: 0 1px 4px rgba(0,122,255,.35); }
+    .btn-add:hover { filter: brightness(1.08); box-shadow: 0 2px 8px rgba(0,122,255,.45); }
 
     /* ─── LAYOUT ─── */
     .layout {
@@ -252,34 +248,34 @@
     .console-col {
       width: 340px;
       min-width: 260px;
-      border-left: 1px solid rgba(0,0,0,.12);
+      border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      background: #1c1c1e;
+      background: var(--surface);
     }
     .console-header {
       padding: 9px 14px;
       font-size: 11px;
       font-weight: 600;
-      color: #636366;
-      border-bottom: 1px solid rgba(255,255,255,.06);
+      color: var(--text3);
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-shrink: 0;
       text-transform: uppercase;
       letter-spacing: .06em;
-      background: #111115;
+      background: var(--surface2);
     }
     .console-clear {
       background: transparent;
-      border: 1px solid rgba(255,255,255,.1);
-      color: #636366;
+      border: 1px solid var(--border2);
+      color: var(--text3);
       font-size: 11px;
       padding: 2px 8px;
       border-radius: 4px;
     }
-    .console-clear:hover { color: #8e8e93; }
+    .console-clear:hover { color: var(--text2); border-color: var(--border2); }
     .console-body {
       flex: 1;
       overflow-y: auto;
@@ -287,7 +283,7 @@
       font-family: 'SF Mono', 'Consolas', monospace;
       font-size: 11px;
       line-height: 1.6;
-      background: #1c1c1e;
+      background: var(--surface);
     }
 
     /* ─── EMPTY STATE ─── */
@@ -437,13 +433,13 @@
 
     /* ─── LOG LINES ─── */
     .log-line { display: flex; gap: 6px; padding: 2px 0; }
-    .log-ts   { color: #48484a; flex-shrink: 0; }
+    .log-ts   { color: var(--text3); flex-shrink: 0; }
     .log-lvl  { flex-shrink: 0; font-weight: 600; width: 36px; }
-    .lvl-INFO  { color: #5ac8f5; }
-    .lvl-WARN  { color: #ff9f0a; }
-    .lvl-ERROR { color: #ff6961; }
-    .lvl-DEBUG { color: #636366; }
-    .log-msg   { color: #c7c7cc; word-break: break-word; }
+    .lvl-INFO  { color: var(--accent-blue); }
+    .lvl-WARN  { color: #f57c00; }
+    .lvl-ERROR { color: var(--red); }
+    .lvl-DEBUG { color: var(--text3); }
+    .log-msg   { color: var(--text2); word-break: break-word; }
 
     /* ─── EXECUTION ALERT ─── */
     #exec-alert {
