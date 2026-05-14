@@ -60,14 +60,17 @@ async def auth_middleware(request: Request, call_next):
                             headers={"WWW-Authenticate": "Basic realm=\"PredictFun Bot\""})
 
         if request.method in ("POST", "PUT", "DELETE"):
-            host = request.headers.get("host", "")
-            expected = f"{request.url.scheme}://{host}"
-            origin = request.headers.get("origin", "")
-            referer = request.headers.get("referer", "")
-            # Берём origin, если есть. Иначе — hostname из referer
-            source = origin or (referer.split("/")[0] + "//" + referer.split("/")[2] if "//" in referer else "")
-            if not source or source.rstrip("/") != expected.rstrip("/"):
-                return Response("Forbidden: Origin mismatch", status_code=403)
+            client_host = (request.client.host if request.client else "") or ""
+            is_local = client_host in ("127.0.0.1", "::1", "localhost")
+            if not is_local:
+                host = request.headers.get("host", "")
+                expected = f"{request.url.scheme}://{host}"
+                origin = request.headers.get("origin", "")
+                referer = request.headers.get("referer", "")
+                # Берём origin, если есть. Иначе — hostname из referer
+                source = origin or (referer.split("/")[0] + "//" + referer.split("/")[2] if "//" in referer else "")
+                if not source or source.rstrip("/") != expected.rstrip("/"):
+                    return Response("Forbidden: Origin mismatch", status_code=403)
 
     return await call_next(request)
 
