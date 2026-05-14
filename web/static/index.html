@@ -8,33 +8,40 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:           #1a1a2e;
-      --card-bg:      #16213e;
-      --card-border:  #0f3460;
-      --card-border2: #1a3a70;
-      --accent-green: #00d4aa;
-      --accent-blue:  #4da6ff;
-      --red:          #ff4757;
-      --yellow:       #ffa502;
-      --text:         #e0e0e0;
-      --text2:        #888;
-      --header-bg:    #111128;
-      --input-bg:     #0d1b3e;
-      --settings-bg:  #0e1a38;
+      --bg:           #0f0f11;
+      --surface:      #1a1a1e;
+      --surface2:     #222226;
+      --surface3:     #2c2c30;
+      --border:       rgba(255,255,255,.07);
+      --border2:      rgba(255,255,255,.12);
+      --accent-green: #30d158;
+      --accent-blue:  #0a84ff;
+      --red:          #ff453a;
+      --yellow:       #ffd60a;
+      --text:         #f5f5f7;
+      --text2:        #8e8e93;
+      --text3:        #48484a;
+      --header-bg:    #0a0a0d;
+      --input-bg:     #111115;
+      --shadow:       0 8px 32px rgba(0,0,0,.6);
+      --shadow-sm:    0 1px 4px rgba(0,0,0,.4);
+      --radius:       10px;
+      --radius-sm:    7px;
     }
 
     html, body {
       height: 100%;
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      font-size: 14px;
+      font-size: 13px;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* ─── HEADER ─── */
     header {
       background: var(--header-bg);
-      border-bottom: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--border);
       padding: 10px 20px;
       display: flex;
       flex-direction: column;
@@ -46,102 +53,186 @@
     .header-row1 {
       display: flex;
       align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
+      gap: 12px;
     }
     .logo {
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 700;
-      color: var(--accent-blue);
+      color: var(--text);
+      letter-spacing: -.2px;
     }
+    .logo em { font-style: normal; color: var(--accent-blue); }
+
     .status-pill {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       font-size: 12px;
       color: var(--text2);
+      background: var(--surface);
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
     }
-    .dot {
-      width: 9px; height: 9px;
-      border-radius: 50%;
-      background: var(--red);
-      transition: background .3s;
-      flex-shrink: 0;
-    }
-    .dot.on  { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
-    .dot.off { background: var(--red); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); transition: background .3s; flex-shrink: 0; }
+    .dot.on  { background: var(--accent-green); }
+    .dot.off { background: var(--text3); }
+
     .info-right {
       margin-left: auto;
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 8px;
+    }
+    .balance-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 11px;
       font-size: 12px;
       color: var(--text2);
     }
-    .balance-val { color: var(--accent-green); font-weight: 600; font-size: 14px; }
-    .orders-badge {
-      background: var(--card-border);
-      color: var(--text2);
-      padding: 2px 8px;
-      border-radius: 12px;
+    .balance-val { color: var(--accent-green); font-weight: 600; }
+    .stat-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 20px;
       font-size: 11px;
+      color: var(--text2);
+    }
+    .addr-chip {
+      font-family: 'SF Mono', 'Consolas', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
     }
 
+    /* ─── HEADER ROW 2 ─── */
+    .header-row2 { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .hdr-divider { width: 1px; height: 18px; background: var(--border2); margin: 0 6px; flex-shrink: 0; }
+
     /* ─── BUTTONS ─── */
-    .header-row2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     button {
       cursor: pointer;
       border: none;
-      border-radius: 6px;
+      border-radius: var(--radius-sm);
       font-size: 12px;
-      font-weight: 600;
-      padding: 6px 14px;
-      transition: opacity .2s, transform .1s;
+      font-weight: 500;
+      padding: 6px 13px;
+      transition: all .15s;
+      font-family: inherit;
+      letter-spacing: -.1px;
     }
     button:active { transform: scale(.97); }
-    button:disabled { opacity: .4; cursor: default; }
-    .btn-start  { background: var(--accent-green); color: #111; }
-    .btn-stop   { background: var(--red);          color: #fff; }
-    .btn-cancel { background: var(--yellow);       color: #111; }
-    .btn-delete { background: transparent; border: 1px solid var(--card-border2); color: var(--red); font-size: 11px; padding: 3px 8px; border-radius: 4px; }
-    .btn-settings { background: transparent; border: 1px solid var(--card-border2); color: var(--accent-blue); font-size: 11px; padding: 3px 8px; border-radius: 4px; }
-    .btn-enable  { background: var(--accent-green); color: #111; font-size: 11px; padding: 3px 10px; border-radius: 4px; font-weight: 700; }
-    .btn-disable { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); font-size: 11px; padding: 3px 10px; border-radius: 4px; }
-    .btn-start-all { background: var(--accent-green); color: #111; padding: 6px 14px; font-size: 12px; font-weight: 700; }
-    .btn-save { background: var(--accent-green); color: #111; font-size: 11px; padding: 4px 12px; border-radius: 4px; }
-    .btn-lang {
+    button:disabled { opacity: .3; cursor: default; transform: none; }
+
+    .btn-start  { background: var(--accent-green); color: #000; font-weight: 600; }
+    .btn-start:not(:disabled):hover  { filter: brightness(1.1); }
+    .btn-stop   { background: var(--red); color: #fff; font-weight: 600; }
+    .btn-stop:not(:disabled):hover   { filter: brightness(1.1); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-secondary:hover { background: var(--surface3); border-color: rgba(255,255,255,.18); }
+
+    .btn-danger-outline {
       background: transparent;
-      border: 1px solid var(--card-border2);
+      color: var(--red);
+      border: 1px solid rgba(255,69,58,.25);
+    }
+    .btn-danger-outline:hover { background: rgba(255,69,58,.1); border-color: rgba(255,69,58,.6); }
+
+    .btn-accent { background: var(--accent-blue); color: #fff; font-weight: 600; }
+    .btn-accent:hover { filter: brightness(1.1); }
+
+    .btn-lang {
+      background: var(--surface);
+      border: 1px solid var(--border2);
       color: var(--text2);
       font-size: 11px;
       padding: 3px 10px;
-      border-radius: 4px;
-      font-weight: 700;
+      border-radius: 20px;
+      font-weight: 600;
       letter-spacing: .5px;
     }
-    .btn-lang:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+    .btn-lang:hover { color: var(--text); }
+
+    /* card-level buttons */
+    .btn-enable  { background: var(--accent-green); color: #000; font-size: 11px; padding: 4px 10px; border-radius: 5px; font-weight: 600; }
+    .btn-enable:hover { filter: brightness(1.1); }
+    .btn-disable { background: var(--surface2); border: 1px solid var(--border2); color: var(--text2); font-size: 11px; padding: 4px 10px; border-radius: 5px; }
+    .btn-disable:hover { background: var(--surface3); }
+    .btn-card-sec { background: transparent; border: 1px solid var(--border2); color: var(--text2); font-size: 11px; padding: 4px 10px; border-radius: 5px; }
+    .btn-card-sec:hover { color: var(--text); background: var(--surface2); }
+    .btn-delete { background: transparent; border: 1px solid rgba(255,69,58,.2); color: var(--red); font-size: 11px; padding: 4px 10px; border-radius: 5px; opacity: .7; }
+    .btn-delete:hover { opacity: 1; border-color: rgba(255,69,58,.6); background: rgba(255,69,58,.06); }
+    .btn-save { background: var(--accent-green); color: #000; font-size: 11px; padding: 5px 14px; border-radius: 5px; font-weight: 600; }
+
+    /* ─── MORE DROPDOWN ─── */
+    .hdr-more { position: relative; }
+    .more-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
+      min-width: 150px;
+      overflow: hidden;
+      z-index: 200;
+    }
+    .more-menu.open { display: block; }
+    .more-menu button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      background: none;
+      border: none;
+      border-radius: 0;
+      color: var(--text);
+      padding: 9px 14px;
+      font-size: 12px;
+      font-weight: 400;
+    }
+    .more-menu button:hover { background: var(--surface3); }
+    .more-menu button + button { border-top: 1px solid var(--border); }
 
     /* ─── ADD MARKETS ─── */
     .add-row {
       display: flex;
       gap: 8px;
-      padding: 10px 20px;
-      border-bottom: 1px solid var(--card-border);
+      padding: 9px 20px;
+      border-bottom: 1px solid var(--border);
       background: var(--header-bg);
     }
     .add-row input {
       flex: 1;
-      background: var(--input-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
       color: var(--text);
       padding: 7px 12px;
       font-size: 13px;
       outline: none;
+      font-family: inherit;
+      transition: border-color .15s;
     }
     .add-row input:focus { border-color: var(--accent-blue); }
     .add-row input::placeholder { color: var(--text2); }
-    .btn-add { background: var(--accent-blue); color: #111; padding: 7px 16px; font-size: 13px; }
+    .btn-add { background: var(--accent-blue); color: #fff; padding: 7px 16px; font-size: 13px; font-weight: 600; }
+    .btn-add:hover { filter: brightness(1.1); }
 
     /* ─── LAYOUT ─── */
     .layout {
@@ -151,61 +242,73 @@
     .markets-col {
       flex: 1;
       overflow-y: auto;
-      padding: 14px;
+      padding: 14px 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
     }
     .console-col {
-      width: 360px;
-      min-width: 280px;
-      border-left: 1px solid var(--card-border);
+      width: 340px;
+      min-width: 260px;
+      border-left: 1px solid var(--border);
       display: flex;
       flex-direction: column;
+      background: var(--header-bg);
     }
     .console-header {
-      padding: 8px 14px;
-      font-size: 12px;
+      padding: 9px 14px;
+      font-size: 11px;
       font-weight: 600;
       color: var(--text2);
-      border-bottom: 1px solid var(--card-border);
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: .06em;
     }
-    .console-clear { background: transparent; border: 1px solid var(--card-border); color: var(--text2); font-size: 11px; padding: 2px 8px; }
+    .console-clear {
+      background: transparent;
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+    .console-clear:hover { color: var(--text); }
     .console-body {
       flex: 1;
       overflow-y: auto;
       padding: 8px;
-      font-family: 'Consolas', monospace;
+      font-family: 'SF Mono', 'Consolas', monospace;
       font-size: 11px;
+      line-height: 1.6;
     }
 
     /* ─── EMPTY STATE ─── */
     .empty-state {
       text-align: center;
       color: var(--text2);
-      padding: 60px 20px;
-      font-size: 15px;
-      line-height: 2;
+      padding: 80px 20px;
+      line-height: 2.2;
     }
-    .empty-state span { font-size: 36px; display: block; margin-bottom: 10px; }
+    .empty-state span { font-size: 32px; display: block; margin-bottom: 10px; opacity: .4; }
 
     /* ─── MARKET CARD ─── */
     .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
       overflow: hidden;
       transition: border-color .2s;
       flex-shrink: 0;
+      box-shadow: var(--shadow-sm);
     }
-    .card:hover { border-color: var(--card-border2); }
+    .card:hover { border-color: var(--border2); }
     @keyframes flashAlert {
-      0%, 100% { border-color: var(--card-border); }
-      50%       { border-color: var(--red); box-shadow: 0 0 12px var(--red); }
+      0%, 100% { border-color: var(--border); }
+      50%       { border-color: var(--red); box-shadow: 0 0 16px rgba(255,69,58,.3); }
     }
     .flash-alert { animation: flashAlert .7s ease 2; }
 
@@ -213,323 +316,375 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 12px 8px;
+      padding: 11px 14px 9px;
     }
-    .ws-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .ws-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
     .ws-dot.on  { background: var(--accent-green); }
-    .ws-dot.off { background: var(--text2); }
+    .ws-dot.off { background: var(--text3); }
     .card-title {
       flex: 1;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .status-badge {
       font-size: 10px;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
       text-transform: uppercase;
       flex-shrink: 0;
+      letter-spacing: .04em;
     }
-    .badge-REGISTERED { background: #1a4a3a; color: var(--accent-green); }
-    .badge-ACTIVE     { background: #1a3a4a; color: var(--accent-blue); }
-    .badge-INACTIVE   { background: #2a2a2a; color: var(--text2); }
-    .badge-UNKNOWN    { background: #2a2020; color: var(--red); }
+    .badge-REGISTERED { background: rgba(48,209,88,.12); color: var(--accent-green); }
+    .badge-ACTIVE     { background: rgba(10,132,255,.12); color: var(--accent-blue); }
+    .badge-INACTIVE   { background: rgba(142,142,147,.1); color: var(--text2); }
+    .badge-UNKNOWN    { background: rgba(255,69,58,.12); color: var(--red); }
 
-    /* grid of stats */
     .card-stats {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1px;
-      background: var(--card-border);
-      border-top: 1px solid var(--card-border);
-      border-bottom: 1px solid var(--card-border);
+      background: var(--border);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
     }
     .stat-cell {
-      background: var(--card-bg);
-      padding: 7px 10px;
+      background: var(--surface);
+      padding: 8px 12px;
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 3px;
     }
-    .stat-label { font-size: 10px; color: var(--text2); }
-    .stat-value { font-size: 13px; font-weight: 600; }
+    .stat-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: .04em; }
+    .stat-value { font-size: 13px; font-weight: 500; }
     .stat-value.green { color: var(--accent-green); }
     .stat-value.blue  { color: var(--accent-blue); }
     .stat-value.red   { color: var(--red); }
     .stat-value.dim   { color: var(--text2); font-weight: 400; }
 
-    /* card footer */
     .card-footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 7px 12px;
+      padding: 8px 14px;
       gap: 8px;
-      flex-wrap: wrap;
     }
-    .footer-left { display: flex; align-items: center; gap: 8px; }
-    .card-ts { font-size: 11px; color: var(--text2); }
-    .card-id { font-size: 10px; color: var(--text2); opacity: .6; }
+    .footer-left { display: flex; align-items: center; gap: 6px; }
+    .card-meta   { display: flex; align-items: center; gap: 8px; }
+    .card-ts     { font-size: 10px; color: var(--text2); }
+    .card-id     { font-size: 10px; color: var(--text3); }
 
     select {
       background: var(--input-bg);
-      border: 1px solid var(--card-border);
+      border: 1px solid var(--border2);
       color: var(--text);
-      border-radius: 4px;
-      padding: 3px 6px;
+      border-radius: 5px;
+      padding: 4px 7px;
       font-size: 12px;
       cursor: pointer;
       outline: none;
+      font-family: inherit;
     }
     select:focus { border-color: var(--accent-blue); }
 
     /* ─── SETTINGS PANEL ─── */
     .settings-panel {
       display: none;
-      background: var(--settings-bg);
-      border-top: 1px solid var(--card-border);
-      padding: 12px;
+      background: var(--surface2);
+      border-top: 1px solid var(--border);
+      padding: 14px;
     }
     .settings-panel.open { display: block; }
     .settings-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
-    .settings-grid.two-col { grid-template-columns: repeat(2, 1fr); }
     .settings-group { display: flex; flex-direction: column; gap: 4px; }
     .settings-label { font-size: 11px; color: var(--text2); }
     .settings-input {
       background: var(--input-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 4px;
+      border: 1px solid var(--border2);
+      border-radius: 5px;
       color: var(--text);
       padding: 5px 8px;
       font-size: 12px;
       outline: none;
       width: 100%;
+      font-family: inherit;
+      transition: border-color .15s;
     }
     .settings-input:focus { border-color: var(--accent-blue); }
     .settings-divider {
       font-size: 10px;
-      font-weight: 700;
+      font-weight: 600;
       color: var(--text2);
       text-transform: uppercase;
-      letter-spacing: 1px;
-      margin: 8px 0 6px;
-      border-bottom: 1px solid var(--card-border);
-      padding-bottom: 4px;
+      letter-spacing: .08em;
+      margin: 4px 0 10px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
     }
     .settings-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
     /* ─── LOG LINES ─── */
-    .log-line { display: flex; gap: 6px; padding: 2px 0; line-height: 1.5; }
-    .log-ts   { color: var(--text2); flex-shrink: 0; }
-    .log-lvl  { flex-shrink: 0; font-weight: 700; width: 36px; }
+    .log-line { display: flex; gap: 6px; padding: 2px 0; }
+    .log-ts   { color: var(--text3); flex-shrink: 0; }
+    .log-lvl  { flex-shrink: 0; font-weight: 600; width: 36px; }
     .lvl-INFO  { color: var(--accent-blue); }
     .lvl-WARN  { color: var(--yellow); }
     .lvl-ERROR { color: var(--red); }
     .lvl-DEBUG { color: var(--text2); }
-    .log-msg  { color: var(--text); word-break: break-word; }
+    .log-msg   { color: var(--text2); word-break: break-word; }
 
     /* ─── EXECUTION ALERT ─── */
     #exec-alert {
       position: fixed;
       top: -100px;
       right: 20px;
-      background: var(--red);
-      color: #fff;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-left: 3px solid var(--accent-green);
+      color: var(--text);
       padding: 12px 18px;
-      border-radius: 8px;
+      border-radius: var(--radius);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       z-index: 999;
-      transition: top .4s ease;
-      max-width: 360px;
-      box-shadow: 0 4px 20px rgba(255,71,87,.5);
+      transition: top .35s cubic-bezier(.16,1,.3,1);
+      max-width: 340px;
+      box-shadow: var(--shadow);
     }
     #exec-alert.visible { top: 20px; }
 
     /* ─── GLOBAL SETTINGS BAR ─── */
     .global-bar {
-      background: #0e1625;
-      border-bottom: 1px solid var(--card-border);
-      padding: 0 20px;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
     }
     .global-bar-toggle {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 0;
+      padding: 9px 20px;
       cursor: pointer;
       user-select: none;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--accent-blue);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text2);
+      transition: color .15s;
     }
-    .global-bar-toggle:hover { color: #7dc0ff; }
-    .global-bar-body {
-      display: none;
-      padding-bottom: 14px;
-    }
+    .global-bar-toggle:hover { color: var(--text); }
+    .global-bar-arrow { font-size: 9px; transition: transform .2s; display: inline-block; }
+    .global-bar-arrow.open { transform: rotate(90deg); }
+    .global-bar-body { display: none; padding: 0 20px 16px; }
     .global-bar-body.open { display: block; }
     .global-fields {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
     }
-    .global-field {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .global-field-header {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .global-field { display: flex; flex-direction: column; gap: 4px; }
+    .global-field-header { display: flex; align-items: center; gap: 6px; }
     .global-field-header input[type=checkbox] {
       width: 14px; height: 14px;
       accent-color: var(--accent-blue);
       cursor: pointer;
       flex-shrink: 0;
     }
-    .global-label {
-      font-size: 11px;
-      color: var(--text2);
-      cursor: pointer;
-    }
+    .global-label { font-size: 11px; color: var(--text2); cursor: pointer; transition: color .15s; }
     .global-label.active { color: var(--text); }
     .global-input {
       background: var(--input-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 4px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
       color: var(--text2);
       padding: 5px 8px;
       font-size: 12px;
       outline: none;
       width: 100%;
-      opacity: .5;
+      opacity: .4;
       pointer-events: none;
+      font-family: inherit;
+      transition: all .15s;
     }
-    .global-input.enabled {
-      color: var(--text);
-      border-color: var(--accent-blue);
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .global-input:focus { border-color: var(--accent-blue); }
+    .global-input.enabled { color: var(--text); border-color: var(--accent-blue); opacity: 1; pointer-events: auto; }
+    .global-input:focus   { border-color: var(--accent-blue); }
     .global-select {
       background: var(--input-bg);
-      border: 1px solid var(--card-border);
+      border: 1px solid var(--border);
       color: var(--text2);
-      border-radius: 4px;
+      border-radius: 5px;
       padding: 5px 8px;
       font-size: 12px;
       width: 100%;
       outline: none;
-      opacity: .5;
+      opacity: .4;
       pointer-events: none;
+      font-family: inherit;
+      transition: all .15s;
     }
-    .global-select.enabled {
-      color: var(--text);
-      border-color: var(--accent-blue);
-      opacity: 1;
-      pointer-events: auto;
-    }
+    .global-select.enabled { color: var(--text); border-color: var(--accent-blue); opacity: 1; pointer-events: auto; }
     .global-actions { display: flex; align-items: center; gap: 10px; }
-    .btn-apply-all {
-      background: var(--accent-blue);
-      color: #111;
-      font-size: 13px;
-      padding: 7px 20px;
-      border-radius: 6px;
-    }
+    .btn-apply-all { background: var(--accent-blue); color: #fff; font-size: 12px; padding: 7px 18px; border-radius: var(--radius-sm); font-weight: 600; }
+    .btn-apply-all:hover { filter: brightness(1.1); }
     .apply-hint { font-size: 11px; color: var(--text2); }
 
-    /* ─── MODAL SETTINGS ─── */
+    /* ─── MODAL ─── */
     .modal-overlay {
       display: none;
       position: fixed;
       inset: 0;
       background: rgba(0,0,0,.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
       z-index: 1000;
       align-items: center;
       justify-content: center;
     }
     .modal-overlay.open { display: flex; }
     .modal-box {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border2);
-      border-radius: 10px;
-      width: 500px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      width: 480px;
       max-width: 95vw;
-      max-height: 90vh;
+      max-height: 88vh;
       overflow-y: auto;
-      padding: 24px;
+      padding: 28px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.7);
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
     }
     .modal-title {
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--accent-blue);
-      margin-bottom: 20px;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -.3px;
     }
-    .modal-section { margin-bottom: 20px; }
+    .modal-close {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      padding: 0;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .modal-close:hover { background: var(--surface3); color: var(--text); }
+
+    .modal-section { margin-bottom: 24px; }
+    .modal-section:last-of-type { margin-bottom: 0; }
     .modal-section-title {
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 600;
       color: var(--text2);
       text-transform: uppercase;
-      letter-spacing: .05em;
-      margin-bottom: 10px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid var(--card-border);
+      letter-spacing: .08em;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
     }
     .modal-field {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      margin-bottom: 10px;
+      gap: 5px;
+      margin-bottom: 12px;
     }
+    .modal-field:last-child { margin-bottom: 0; }
     .modal-field label { font-size: 12px; color: var(--text2); }
-    .modal-field input {
+    .modal-field input[type=text],
+    .modal-field input[type=password],
+    .modal-field input[type=number] {
       background: var(--input-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 6px;
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
       color: var(--text);
-      padding: 7px 10px;
+      padding: 8px 11px;
       font-size: 13px;
       outline: none;
       font-family: monospace;
+      transition: border-color .15s;
+      width: 100%;
     }
     .modal-field input:focus { border-color: var(--accent-blue); }
-    .modal-field input::placeholder { color: var(--text2); }
+    .modal-field input::placeholder { color: var(--text3); }
+
+    .modal-check-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 11px 13px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    .modal-check-row:hover { border-color: var(--border2); }
+    .modal-check-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent-blue); flex-shrink: 0; cursor: pointer; }
+    .modal-check-row label { font-size: 13px; color: var(--text); cursor: pointer; line-height: 1.35; }
+
     .modal-note {
       font-size: 11px;
-      color: var(--yellow);
-      margin-top: -6px;
+      color: var(--text2);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 11px;
       margin-bottom: 10px;
+      line-height: 1.5;
     }
+    .modal-note.warn { border-color: rgba(255,214,10,.2); color: var(--yellow); background: rgba(255,214,10,.05); }
+
     .modal-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
-      margin-top: 20px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
     }
-    .btn-modal-save { background: var(--accent-green); color: #111; padding: 8px 20px; font-size: 13px; }
-    .btn-modal-cancel { background: transparent; border: 1px solid var(--card-border2); color: var(--text2); padding: 8px 16px; font-size: 13px; }
-    .modal-hint { font-size: 11px; color: var(--text2); }
+    .btn-modal-save {
+      background: var(--accent-blue);
+      color: #fff;
+      padding: 9px 22px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+    }
+    .btn-modal-save:hover { filter: brightness(1.1); }
+    .btn-modal-cancel {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text2);
+      padding: 9px 18px;
+      font-size: 13px;
+      border-radius: var(--radius-sm);
+    }
+    .btn-modal-cancel:hover { background: var(--surface3); color: var(--text); }
+    .modal-hint { font-size: 11px; color: var(--text2); margin-left: auto; }
 
     /* ─── SCROLLBAR ─── */
-    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
   </style>
 </head>
 <body>
@@ -538,7 +693,7 @@
 
 <header>
   <div class="header-row1">
-    <span class="logo">⚡ PredictFun Bot</span>
+    <span class="logo">Predict<em>Fun</em> Bot</span>
 
     <div class="status-pill">
       <span class="dot off" id="dot-bot"></span>
@@ -550,25 +705,48 @@
     </div>
 
     <div class="info-right">
-      <span id="ws-addr" style="color:var(--text2);font-size:11px;font-family:monospace">—</span>
-      <span><span data-i18n="balance">Баланс:</span> <span class="balance-val" id="balance-display">—</span></span>
-      <span class="orders-badge" id="markets-badge">—</span>
-      <span class="orders-badge" id="orders-badge">—</span>
+      <span class="addr-chip" id="ws-addr" style="display:none">—</span>
+      <div class="balance-chip">
+        <span data-i18n="balance">Баланс:</span>
+        <span class="balance-val" id="balance-display">—</span>
+      </div>
+      <span class="stat-chip" id="markets-badge">—</span>
+      <span class="stat-chip" id="orders-badge">—</span>
       <button class="btn-lang" id="btn-lang" onclick="toggleLang()">EN</button>
     </div>
   </div>
 
   <div class="header-row2">
+    <!-- Bot control -->
     <button class="btn-start" id="btn-start" onclick="botStart()" data-i18n="btn_start">▶ СТАРТ</button>
     <button class="btn-stop"  id="btn-stop"  onclick="botStop()"  disabled data-i18n="btn_stop">■ СТОП</button>
-    <button class="btn-start-all" onclick="enableAll(true)" data-i18n="btn_run_all">▶ Запустить все</button>
-    <button class="btn-cancel" onclick="cancelAll()" data-i18n="btn_cancel_all">✕ Отменить все ордера</button>
-    <button class="btn-delete" style="padding:6px 14px;font-size:12px" onclick="removeAllMarkets()" data-i18n="btn_delete_all">🗑 Удалить все маркеты</button>
-    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="exportMarkets()" data-i18n="btn_export">⬇ Экспорт списка</button>
-    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="importMarketsClick()" data-i18n="btn_import">⬆ Импорт</button>
+
+    <div class="hdr-divider"></div>
+
+    <!-- Market batch ops -->
+    <button class="btn-secondary" onclick="enableAll(true)" data-i18n="btn_run_all">Запустить все</button>
+    <button class="btn-secondary" onclick="cancelAll()" data-i18n="btn_cancel_all">Отменить ордера</button>
+    <button class="btn-danger-outline" onclick="removeAllMarkets()" data-i18n="btn_delete_all">Удалить все</button>
+
+    <div class="hdr-divider"></div>
+
+    <!-- Settings -->
+    <button class="btn-secondary" onclick="openBotParams()" data-i18n="btn_params_hdr">Параметры</button>
+    <button class="btn-secondary" onclick="openBotSettings()" data-i18n="btn_settings_hdr">Аккаунт</button>
+
+    <div class="hdr-divider"></div>
+
+    <!-- Manager + more dropdown -->
+    <button class="btn-secondary" onclick="window.open('http://'+location.hostname+':8000','_blank')" data-i18n="btn_manager">Менеджер</button>
+
+    <div class="hdr-more" id="hdr-more">
+      <button class="btn-secondary" onclick="toggleMoreMenu()" style="padding:6px 10px;letter-spacing:2px">···</button>
+      <div class="more-menu" id="more-menu">
+        <button onclick="exportMarkets();closeMoreMenu()" data-i18n="btn_export">↓ Экспорт</button>
+        <button onclick="importMarketsClick();closeMoreMenu()" data-i18n="btn_import">↑ Импорт</button>
+      </div>
+    </div>
     <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importMarketsFile(this)">
-    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="openBotSettings()" data-i18n="btn_settings_hdr">⚙ Настройки</button>
-    <button class="btn-settings" style="padding:6px 14px;font-size:12px" onclick="window.open('http://'+location.hostname+':8000','_blank')" data-i18n="btn_manager">⚡ Менеджер</button>
   </div>
 </header>
 
@@ -581,8 +759,8 @@
 <!-- ГЛОБАЛЬНЫЕ НАСТРОЙКИ -->
 <div class="global-bar">
   <div class="global-bar-toggle" onclick="toggleGlobalBar()">
-    <span id="global-bar-arrow">▶</span>
-    <span data-i18n="global_bar_title">📋 Общие настройки — применить ко всем маркетам</span>
+    <span class="global-bar-arrow" id="global-bar-arrow">▶</span>
+    <span data-i18n="global_bar_title">Общие настройки — применить ко всем маркетам</span>
   </div>
   <div class="global-bar-body" id="global-bar-body">
     <div class="global-fields">
@@ -645,8 +823,8 @@
         </div>
         <select class="global-select" id="gb-side" disabled>
           <option value="both" data-i18n="both_sides">Обе стороны</option>
-          <option value="yes" data-i18n="yes_only">Только YES</option>
-          <option value="no" data-i18n="no_only">Только NO</option>
+          <option value="yes"  data-i18n="yes_only">Только YES</option>
+          <option value="no"   data-i18n="no_only">Только NO</option>
         </select>
       </div>
 
@@ -676,7 +854,7 @@
 
     </div>
     <div class="global-actions">
-      <button class="btn-apply-all" onclick="applyGlobalSettings()" data-i18n="btn_apply_all">✔ Применить ко всем</button>
+      <button class="btn-apply-all" onclick="applyGlobalSettings()" data-i18n="btn_apply_all">Применить ко всем</button>
       <span class="apply-hint" id="gb-hint" data-i18n="apply_hint">Отметь галочкой параметры которые хочешь изменить</span>
     </div>
   </div>
@@ -710,22 +888,23 @@ const T = {
     ws_ok: 'WS ок', ws_off: 'WS нет',
     balance: 'Баланс:',
     btn_start: '▶ СТАРТ', btn_stop: '■ СТОП',
-    btn_run_all: '▶ Запустить все',
-    btn_cancel_all: '✕ Отменить все ордера',
-    btn_delete_all: '🗑 Удалить все маркеты',
-    btn_export: '⬇ Экспорт списка',
-    btn_settings_hdr: '⚙ Настройки',
-    btn_manager: '⚡ Менеджер',
+    btn_run_all: 'Запустить все',
+    btn_cancel_all: 'Отменить ордера',
+    btn_delete_all: 'Удалить все',
+    btn_export: '↓ Экспорт',
+    btn_settings_hdr: 'Аккаунт',
+    btn_params_hdr: 'Параметры',
+    btn_manager: 'Менеджер',
     market_ids_placeholder: 'ID рынков через запятую: 1234, 5678, 9012…',
     btn_add: 'Добавить',
-    global_bar_title: '📋 Общие настройки — применить ко всем маркетам',
+    global_bar_title: 'Общие настройки — применить ко всем маркетам',
     gb_usdt: 'Позиция USDT', gb_liq: 'Целевая ликвидность, $',
     gb_minord: 'Мин. ордеров перед заявкой (0=выкл)',
     gb_spread: 'Макс. авто-спред, %', gb_minspr: 'Мин. спред, ¢',
     gb_mode: 'Режим ликвидности', gb_side: 'Сторона',
     gb_vlimit: 'Лимит переставлений',
     gb_vwindow: 'Окно волатильности, сек', gb_vcool: 'Кулдаун волатильности, сек',
-    btn_apply_all: '✔ Применить ко всем',
+    btn_apply_all: 'Применить ко всем',
     apply_hint: 'Отметь галочкой параметры которые хочешь изменить',
     bid_standard: 'BID (стандарт)', ask: 'ASK',
     both_sides: 'Обе стороны', yes_only: 'Только YES', no_only: 'Только NO',
@@ -736,7 +915,7 @@ const T = {
     no_price: 'NO цена', no_shares: 'NO акции',
     mid_price: 'Мид цена', liq_yes: 'Ликв. YES', liq_no: 'Ликв. NO', size_usd: 'Размер $',
     btn_stop_market: '■ Стоп', btn_run_market: '▶ Запустить',
-    btn_settings_card: '⚙ Настройки', btn_hide: '▲ Скрыть', btn_delete: 'Удалить',
+    btn_settings_card: 'Настройки', btn_hide: 'Скрыть', btn_delete: 'Удалить',
     updated: 'обновлено',
     section_general: 'Основные', section_liq_spread: 'Ликвидность и спред',
     section_volatility: 'Защита от волатильности',
@@ -746,13 +925,14 @@ const T = {
     lbl_max_spread: 'Макс. авто-спред, %', lbl_min_spread: 'Мин. спред, ¢',
     lbl_vlimit: 'Лимит переставлений (0=выкл)',
     lbl_vwindow: 'Окно, сек', lbl_vcool: 'Кулдаун, сек',
-    btn_save: '💾 Сохранить',
-    modal_title: '⚙ Настройки бота',
-    section_account: 'Аккаунт',
+    btn_save: 'Сохранить',
+    modal_title_account: 'Аккаунт',
+    modal_title_params: 'Параметры бота',
+    section_account: 'Учётные данные',
     lbl_account_address: 'Адрес аккаунта (0x...)',
     lbl_proxy: 'Прокси (опционально)',
-    note_restart: '⚠ Изменения аккаунта вступят в силу после перезапуска бота',
-    note_key_stored: '🔒 Ключ хранится в bot_config.json на сервере в открытом виде — убедись что доступ к серверу защищён',
+    note_restart: '⚠ Изменения вступят в силу после перезапуска бота',
+    note_key_stored: '🔒 Ключ хранится в bot_config.json на сервере в открытом виде',
     section_security: 'Безопасность',
     lbl_ui_password: 'Пароль для UI (оставь пустым — без защиты)',
     ph_ui_password: 'Придумай пароль',
@@ -772,7 +952,7 @@ const T = {
     imported_n: 'Импортировано: {n} маркетов',
     no_markets_delete: 'Нет маркетов для удаления',
     no_markets_loaded: 'Нет загруженных маркетов',
-    btn_import: '⬆ Импорт',
+    btn_import: '↑ Импорт',
     section_points: 'Фильтр поинтов',
     lbl_points_only: 'Ставить ордера только в маркеты с наградой (поинты)',
     lbl_points_poll: 'Проверять каждые N секунд (60–7200)',
@@ -790,8 +970,8 @@ const T = {
     applied_n: '✔ Применено к {n} маркетам',
     global_applied: 'Глобальные настройки применены к {n} маркетам: {keys}',
     check_one_param: '⚠ Отметь хотя бы один параметр',
-    saving: '⏳ Сохраняю...', saved: '✔ Сохранено',
-    saved_restart: '✔ Сохранено. Перезапусти бота чтобы применить аккаунт',
+    saving: 'Сохраняю...', saved: '✔ Сохранено',
+    saved_restart: '✔ Сохранено. Перезапусти бота чтобы применить',
     save_error: '✗ Ошибка сохранения',
     enabled_n: 'Запущено {n} маркетов', disabled_n: 'Остановлено {n} маркетов',
     deleted_n: 'Удалено {n} маркетов',
@@ -805,22 +985,23 @@ const T = {
     ws_ok: 'WS ok', ws_off: 'WS off',
     balance: 'Balance:',
     btn_start: '▶ START', btn_stop: '■ STOP',
-    btn_run_all: '▶ Enable all',
-    btn_cancel_all: '✕ Cancel all orders',
-    btn_delete_all: '🗑 Remove all markets',
-    btn_export: '⬇ Export list',
-    btn_settings_hdr: '⚙ Settings',
-    btn_manager: '⚡ Manager',
+    btn_run_all: 'Enable all',
+    btn_cancel_all: 'Cancel orders',
+    btn_delete_all: 'Delete all',
+    btn_export: '↓ Export',
+    btn_settings_hdr: 'Account',
+    btn_params_hdr: 'Parameters',
+    btn_manager: 'Manager',
     market_ids_placeholder: 'Market IDs comma-separated: 1234, 5678, 9012…',
     btn_add: 'Add',
-    global_bar_title: '📋 Global settings — apply to all markets',
+    global_bar_title: 'Global settings — apply to all markets',
     gb_usdt: 'Position USDT', gb_liq: 'Target liquidity, $',
     gb_minord: 'Min. orders before (0=off)',
     gb_spread: 'Max auto-spread, %', gb_minspr: 'Min spread, ¢',
     gb_mode: 'Liquidity mode', gb_side: 'Side',
     gb_vlimit: 'Reposition limit',
     gb_vwindow: 'Volatility window, sec', gb_vcool: 'Volatility cooldown, sec',
-    btn_apply_all: '✔ Apply to all',
+    btn_apply_all: 'Apply to all',
     apply_hint: 'Check the parameters you want to change',
     bid_standard: 'BID (standard)', ask: 'ASK',
     both_sides: 'Both sides', yes_only: 'YES only', no_only: 'NO only',
@@ -831,7 +1012,7 @@ const T = {
     no_price: 'NO price', no_shares: 'NO shares',
     mid_price: 'Mid price', liq_yes: 'Liq. YES', liq_no: 'Liq. NO', size_usd: 'Size $',
     btn_stop_market: '■ Stop', btn_run_market: '▶ Run',
-    btn_settings_card: '⚙ Settings', btn_hide: '▲ Hide', btn_delete: 'Remove',
+    btn_settings_card: 'Settings', btn_hide: 'Hide', btn_delete: 'Remove',
     updated: 'updated',
     section_general: 'General', section_liq_spread: 'Liquidity & spread',
     section_volatility: 'Volatility protection',
@@ -841,13 +1022,14 @@ const T = {
     lbl_max_spread: 'Max auto-spread, %', lbl_min_spread: 'Min spread, ¢',
     lbl_vlimit: 'Reposition limit (0=off)',
     lbl_vwindow: 'Window, sec', lbl_vcool: 'Cooldown, sec',
-    btn_save: '💾 Save',
-    modal_title: '⚙ Bot settings',
-    section_account: 'Account',
+    btn_save: 'Save',
+    modal_title_account: 'Account',
+    modal_title_params: 'Bot Parameters',
+    section_account: 'Credentials',
     lbl_account_address: 'Account address (0x...)',
     lbl_proxy: 'Proxy (optional)',
-    note_restart: '⚠ Account changes will take effect after bot restart',
-    note_key_stored: '🔒 Key is stored in bot_config.json on the server in plain text — make sure server access is protected',
+    note_restart: '⚠ Changes will take effect after bot restart',
+    note_key_stored: '🔒 Key is stored in bot_config.json on the server in plain text',
     section_security: 'Security',
     lbl_ui_password: 'UI password (leave empty — no protection)',
     ph_ui_password: 'Set a password',
@@ -867,7 +1049,7 @@ const T = {
     imported_n: 'Imported: {n} markets',
     no_markets_delete: 'No markets to remove',
     no_markets_loaded: 'No markets loaded',
-    btn_import: '⬆ Import',
+    btn_import: '↑ Import',
     section_points: 'Points filter',
     lbl_points_only: 'Place orders only in markets with reward (points)',
     lbl_points_poll: 'Check every N seconds (60–7200)',
@@ -885,8 +1067,8 @@ const T = {
     applied_n: '✔ Applied to {n} markets',
     global_applied: 'Global settings applied to {n} markets: {keys}',
     check_one_param: '⚠ Check at least one parameter',
-    saving: '⏳ Saving...', saved: '✔ Saved',
-    saved_restart: '✔ Saved. Restart the bot to apply account changes',
+    saving: 'Saving...', saved: '✔ Saved',
+    saved_restart: '✔ Saved. Restart the bot to apply',
     save_error: '✗ Save error',
     enabled_n: 'Enabled {n} markets', disabled_n: 'Disabled {n} markets',
     deleted_n: 'Deleted {n} markets',
@@ -913,7 +1095,6 @@ function applyI18n() {
   document.querySelectorAll('[data-i18n-ph]').forEach(el => {
     el.placeholder = t(el.dataset.i18nPh);
   });
-  // Lang toggle button shows the OTHER language
   const btn = document.getElementById('btn-lang');
   if (btn) btn.textContent = LANG === 'ru' ? 'EN' : 'RU';
 }
@@ -922,7 +1103,6 @@ function toggleLang() {
   LANG = LANG === 'ru' ? 'en' : 'ru';
   localStorage.setItem('predictfun_lang', LANG);
   applyI18n();
-  // Re-render dynamic content
   updateBotStatusUI();
   setWsDot(document.getElementById('dot-ws').classList.contains('on'));
   updateMarketsCount();
@@ -932,9 +1112,10 @@ function toggleLang() {
     if (card) updateCard(card, id, state.markets[id]);
   });
   checkEmpty();
-  // Update modal if open
-  const modal = document.getElementById('bot-settings-modal');
-  if (modal && modal.classList.contains('open')) _updateModalLabels();
+  const acc = document.getElementById('bot-settings-modal');
+  if (acc && acc.classList.contains('open')) _updateAccountModalLabels();
+  const par = document.getElementById('bot-params-modal');
+  if (par && par.classList.contains('open')) _updateParamsModalLabels();
 }
 
 // ─── СОСТОЯНИЕ ────────────────────────────────────────────────────────────────
@@ -959,6 +1140,12 @@ document.addEventListener('DOMContentLoaded', () => {
   connectWebSocket();
   setInterval(updateTimestamps, 5000);
   setInterval(fetchInitialState, 8000);
+
+  // Close more-menu on outside click
+  document.addEventListener('click', e => {
+    const more = document.getElementById('hdr-more');
+    if (more && !more.contains(e.target)) closeMoreMenu();
+  });
 
   try {
     const saved = JSON.parse(localStorage.getItem('globalSettingsVals') || 'null');
@@ -1128,6 +1315,15 @@ async function saveSettings(marketId) {
   }
 }
 
+// ─── MORE DROPDOWN ────────────────────────────────────────────────────────────
+function toggleMoreMenu() {
+  const menu = document.getElementById('more-menu');
+  menu.classList.toggle('open');
+}
+function closeMoreMenu() {
+  document.getElementById('more-menu')?.classList.remove('open');
+}
+
 // ─── WEBSOCKET ────────────────────────────────────────────────────────────────
 let ws = null, wsReconnectTimer = null, wsDelay = 2000;
 
@@ -1189,7 +1385,9 @@ function applyBotState(data) {
   if (data.total_open_orders !== undefined) updateOrdersCount(data.total_open_orders);
   if (data.account_address) {
     const a = data.account_address;
-    document.getElementById('ws-addr').textContent = a.slice(0,8)+'…'+a.slice(-4);
+    const el = document.getElementById('ws-addr');
+    el.textContent = a.slice(0,8)+'…'+a.slice(-4);
+    el.style.display = '';
   }
   if (data.markets && typeof data.markets === 'object') {
     const serverIds = new Set(Object.keys(data.markets));
@@ -1402,13 +1600,13 @@ function buildCardHTML(id, m) {
           onclick="toggleEnable('${escA(id)}')">
           ${s.enabled ? t('btn_stop_market') : t('btn_run_market')}
         </button>
-        <button class="btn-settings" id="btn-set-${escA(id)}"
+        <button class="btn-card-sec" id="btn-set-${escA(id)}"
           onclick="toggleSettings('${escA(id)}')">
           ${settOpen ? t('btn_hide') : t('btn_settings_card')}
         </button>
         <button class="btn-delete" onclick="deleteMarket('${escA(id)}')">${t('btn_delete')}</button>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;">
+      <div class="card-meta">
         <span class="card-id">#${esc(id)}</span>
         <span class="card-ts" id="ts-${escA(id)}">${t('updated')} ${esc(age)}</span>
       </div>
@@ -1511,7 +1709,7 @@ function updateTimestamps() {
   });
 }
 
-// ─── EXECUTION ALERT ─────────────────────────────────────────────────────────
+// ─── EXECUTION ALERT ──────────────────────────────────────────────────────────
 function showExecutionAlert(msg) {
   const el = document.getElementById('exec-alert');
   const side = (msg.side || '').toUpperCase();
@@ -1528,7 +1726,7 @@ function showExecutionAlert(msg) {
   execAlertTimer = setTimeout(() => el.classList.remove('visible'), 6000);
 }
 
-// ─── CONSOLE ─────────────────────────────────────────────────────────────────
+// ─── CONSOLE ──────────────────────────────────────────────────────────────────
 function appendLog(level, msg, ts) {
   const lvl = (level || 'INFO').toUpperCase();
   const time = ts ? fmtLogTs(ts) : nowTs();
@@ -1548,7 +1746,7 @@ function clearConsole() {
   document.getElementById('console-body').innerHTML = '';
 }
 
-// ─── ФОРМАТИРОВАНИЕ ──────────────────────────────────────────────────────────
+// ─── ФОРМАТИРОВАНИЕ ───────────────────────────────────────────────────────────
 function fmtCents(p) { return p==null ? '—' : (parseFloat(p)*100).toFixed(1)+'¢'; }
 function fmtSh(s)    { if (s==null) return '—'; const n=parseFloat(s); return n>=1000?(n/1000).toFixed(2)+'k':n.toFixed(1); }
 function fmtNum(n)   { if (n==null) return '—'; const v=parseFloat(n); return v>=1000?(v/1000).toFixed(1)+'k':v.toFixed(0); }
@@ -1564,7 +1762,7 @@ function toggleGlobalBar() {
   const body  = document.getElementById('global-bar-body');
   const arrow = document.getElementById('global-bar-arrow');
   const open  = body.classList.toggle('open');
-  arrow.textContent = open ? '▼' : '▶';
+  arrow.classList.toggle('open', open);
 }
 
 function gbToggle(key) {
@@ -1684,14 +1882,13 @@ async function enableAll(val) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && document.activeElement === document.getElementById('market-ids-input'))
     addMarkets();
-  if (e.key === 'Escape') closeBotSettings();
+  if (e.key === 'Escape') { closeBotSettings(); closeBotParams(); }
 });
 
-// ─── НАСТРОЙКИ БОТА (модал) ──────────────────────────────────────────────────
-function _updateModalLabels() {
+// ─── МОДАЛ: АККАУНТ ───────────────────────────────────────────────────────────
+function _updateAccountModalLabels() {
   const modal = document.getElementById('bot-settings-modal');
   if (!modal) return;
-  modal.querySelector('.modal-title').textContent           = t('modal_title');
   modal.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
   modal.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
 }
@@ -1710,13 +1907,7 @@ async function openBotSettings() {
   document.getElementById('cfg-tg-chat').value       = data.telegram_chat_id || '';
   document.getElementById('cfg-ui-password').value   = '';
 
-  document.getElementById('cfg-points-only').checked    = !!data.predict_points_only;
-  document.getElementById('cfg-points-poll').value       = data.predict_points_poll_sec ?? 600;
-  document.getElementById('cfg-autosell-enabled').checked = !!data.auto_sell_enabled;
-  document.getElementById('cfg-autosell-loss').value     = data.auto_sell_max_loss_pct ?? 15;
-  document.getElementById('cfg-autosell-delay').value    = data.auto_sell_delay_sec ?? 0;
-
-  _updateModalLabels();
+  _updateAccountModalLabels();
   document.getElementById('bot-settings-modal').classList.add('open');
 }
 
@@ -1733,11 +1924,6 @@ async function saveBotSettings() {
     telegram_token:           document.getElementById('cfg-tg-token').value.trim(),
     telegram_chat_id:         document.getElementById('cfg-tg-chat').value.trim(),
     ui_password:              document.getElementById('cfg-ui-password').value,
-    predict_points_only:      document.getElementById('cfg-points-only').checked,
-    predict_points_poll_sec:  parseInt(document.getElementById('cfg-points-poll').value) || 600,
-    auto_sell_enabled:        document.getElementById('cfg-autosell-enabled').checked,
-    auto_sell_max_loss_pct:   parseFloat(document.getElementById('cfg-autosell-loss').value) || 15,
-    auto_sell_delay_sec:      parseFloat(document.getElementById('cfg-autosell-delay').value) || 0,
   };
 
   const hint = document.getElementById('cfg-hint');
@@ -1758,15 +1944,69 @@ async function saveBotSettings() {
     hint.style.color = 'var(--red)';
   }
 }
+
+// ─── МОДАЛ: ПАРАМЕТРЫ БОТА ────────────────────────────────────────────────────
+function _updateParamsModalLabels() {
+  const modal = document.getElementById('bot-params-modal');
+  if (!modal) return;
+  modal.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  modal.querySelectorAll('[data-i18n-ph]').forEach(el => el.placeholder = t(el.dataset.i18nPh));
+}
+
+async function openBotParams() {
+  const data = await apiFetch('GET', '/api/config');
+  if (!data) return;
+
+  document.getElementById('cfg-points-only').checked      = !!data.predict_points_only;
+  document.getElementById('cfg-points-poll').value         = data.predict_points_poll_sec ?? 600;
+  document.getElementById('cfg-autosell-enabled').checked  = !!data.auto_sell_enabled;
+  document.getElementById('cfg-autosell-loss').value       = data.auto_sell_max_loss_pct ?? 15;
+  document.getElementById('cfg-autosell-delay').value      = data.auto_sell_delay_sec ?? 0;
+
+  _updateParamsModalLabels();
+  document.getElementById('bot-params-modal').classList.add('open');
+}
+
+function closeBotParams() {
+  document.getElementById('bot-params-modal').classList.remove('open');
+}
+
+async function saveBotParams() {
+  const body = {
+    predict_points_only:     document.getElementById('cfg-points-only').checked,
+    predict_points_poll_sec: parseInt(document.getElementById('cfg-points-poll').value) || 600,
+    auto_sell_enabled:       document.getElementById('cfg-autosell-enabled').checked,
+    auto_sell_max_loss_pct:  parseFloat(document.getElementById('cfg-autosell-loss').value) || 15,
+    auto_sell_delay_sec:     parseFloat(document.getElementById('cfg-autosell-delay').value) || 0,
+  };
+
+  const hint = document.getElementById('params-hint');
+  hint.textContent = t('saving');
+  hint.style.color = '';
+
+  const res = await apiFetch('POST', '/api/config', body);
+  if (res && res.ok) {
+    hint.textContent = t('saved');
+    hint.style.color = 'var(--accent-green)';
+    appendLog('INFO', t('saved'));
+    setTimeout(() => { hint.textContent = ''; closeBotParams(); }, 2000);
+  } else {
+    hint.textContent = t('save_error');
+    hint.style.color = 'var(--red)';
+  }
+}
 </script>
 
-<!-- МОДАЛ: НАСТРОЙКИ БОТА -->
+<!-- МОДАЛ: АККАУНТ -->
 <div class="modal-overlay" id="bot-settings-modal" onclick="if(event.target===this)closeBotSettings()">
   <div class="modal-box">
-    <div class="modal-title" data-i18n="modal_title">⚙ Настройки бота</div>
+    <div class="modal-header">
+      <span class="modal-title" data-i18n="modal_title_account">Аккаунт</span>
+      <button class="modal-close" onclick="closeBotSettings()">✕</button>
+    </div>
 
     <div class="modal-section">
-      <div class="modal-section-title" data-i18n="section_account">Аккаунт</div>
+      <div class="modal-section-title" data-i18n="section_account">Учётные данные</div>
       <div class="modal-field">
         <label>API Key</label>
         <input id="cfg-api-key" type="text" data-i18n-ph="ph_api_key" placeholder="Вставь API key">
@@ -1781,10 +2021,10 @@ async function saveBotSettings() {
       </div>
       <div class="modal-field">
         <label data-i18n="lbl_proxy">Прокси (опционально)</label>
-        <input id="cfg-proxy" type="text" placeholder="http://host:port или http://user:pass@host:port">
+        <input id="cfg-proxy" type="text" placeholder="http://user:pass@host:port">
       </div>
-      <div class="modal-note" data-i18n="note_restart">⚠ Изменения аккаунта вступят в силу после перезапуска бота</div>
-      <div class="modal-note" data-i18n="note_key_stored">🔒 Ключ хранится в bot_config.json на сервере в открытом виде — убедись что доступ к серверу защищён</div>
+      <div class="modal-note warn" data-i18n="note_restart">⚠ Изменения вступят в силу после перезапуска бота</div>
+      <div class="modal-note" data-i18n="note_key_stored">🔒 Ключ хранится в bot_config.json на сервере в открытом виде</div>
     </div>
 
     <div class="modal-section">
@@ -1807,38 +2047,54 @@ async function saveBotSettings() {
       </div>
     </div>
 
+    <div class="modal-actions">
+      <button class="btn-modal-save" onclick="saveBotSettings()" data-i18n="btn_save_settings">Сохранить</button>
+      <button class="btn-modal-cancel" onclick="closeBotSettings()" data-i18n="btn_cancel">Отмена</button>
+      <span class="modal-hint" id="cfg-hint"></span>
+    </div>
+  </div>
+</div>
+
+<!-- МОДАЛ: ПАРАМЕТРЫ БОТА -->
+<div class="modal-overlay" id="bot-params-modal" onclick="if(event.target===this)closeBotParams()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title" data-i18n="modal_title_params">Параметры бота</span>
+      <button class="modal-close" onclick="closeBotParams()">✕</button>
+    </div>
+
     <div class="modal-section">
       <div class="modal-section-title" data-i18n="section_points">Фильтр поинтов</div>
-      <div class="modal-field" style="flex-direction:row;align-items:center;gap:8px">
-        <input type="checkbox" id="cfg-points-only" style="width:auto;margin:0">
-        <label for="cfg-points-only" data-i18n="lbl_points_only" style="cursor:pointer">Ставить ордера только в маркеты с наградой (поинты)</label>
+      <div class="modal-check-row">
+        <input type="checkbox" id="cfg-points-only">
+        <label for="cfg-points-only" data-i18n="lbl_points_only">Ставить ордера только в маркеты с наградой (поинты)</label>
       </div>
       <div class="modal-field">
         <label data-i18n="lbl_points_poll">Проверять каждые N секунд (60–7200)</label>
-        <input id="cfg-points-poll" type="number" min="60" max="7200" step="60" value="600" placeholder="600">
+        <input id="cfg-points-poll" type="number" min="60" max="7200" step="60" value="600" style="font-family:inherit">
       </div>
     </div>
 
     <div class="modal-section">
       <div class="modal-section-title" data-i18n="section_autosell">Авто-продажа</div>
-      <div class="modal-field" style="flex-direction:row;align-items:center;gap:8px">
-        <input type="checkbox" id="cfg-autosell-enabled" style="width:auto;margin:0">
-        <label for="cfg-autosell-enabled" data-i18n="lbl_autosell_enabled" style="cursor:pointer">Продавать позицию автоматически после исполнения</label>
+      <div class="modal-check-row">
+        <input type="checkbox" id="cfg-autosell-enabled">
+        <label for="cfg-autosell-enabled" data-i18n="lbl_autosell_enabled">Продавать позицию автоматически после исполнения</label>
       </div>
       <div class="modal-field">
         <label data-i18n="lbl_autosell_loss">Макс. потеря при продаже, %</label>
-        <input id="cfg-autosell-loss" type="number" min="0.1" max="95" step="0.1" value="15" placeholder="15">
+        <input id="cfg-autosell-loss" type="number" min="0.1" max="95" step="0.1" value="15" style="font-family:inherit">
       </div>
       <div class="modal-field">
         <label data-i18n="lbl_autosell_delay">Задержка перед продажей, сек</label>
-        <input id="cfg-autosell-delay" type="number" min="0" max="3600" step="1" value="0" placeholder="0">
+        <input id="cfg-autosell-delay" type="number" min="0" max="3600" step="1" value="0" style="font-family:inherit">
       </div>
     </div>
 
     <div class="modal-actions">
-      <button class="btn-modal-save" onclick="saveBotSettings()" data-i18n="btn_save_settings">Сохранить</button>
-      <button class="btn-modal-cancel" onclick="closeBotSettings()" data-i18n="btn_cancel">Отмена</button>
-      <span class="modal-hint" id="cfg-hint"></span>
+      <button class="btn-modal-save" onclick="saveBotParams()" data-i18n="btn_save_settings">Сохранить</button>
+      <button class="btn-modal-cancel" onclick="closeBotParams()" data-i18n="btn_cancel">Отмена</button>
+      <span class="modal-hint" id="params-hint"></span>
     </div>
   </div>
 </div>
