@@ -759,19 +759,26 @@ class BotEngine:
                         continue
                     # Срок жизни ордера: если задан и истёк — отменяем
                     if expiry_sec > 0 and age > expiry_sec and order_hash in open_ids:
-                        self._auto_sell_pending.pop(order_hash, None)
-                        self.logger.log(
-                            f"[AutoSell] [{entry.get('market_id')}] ⏱ Ордер на продажу не исполнен за "
-                            f"{expiry_sec}с — отменяем. Закрой позицию {entry.get('side','').upper()} вручную!",
-                            level="WARN"
-                        )
+                        cancel_ok = False
                         if self.order_manager:
-                            await self.order_manager.cancel_orders([order_hash], market_id=entry.get("market_id"))
-                        await self._send_telegram(
-                            f"⏱ Ордер авто-продажи отменён по истечении {expiry_sec}с\n"
-                            f"Маркет: {entry.get('title','')[:60]}\n"
-                            f"Закрой позицию {entry.get('side','').upper()} вручную: {entry.get('shares',0):.1f} шт"
-                        )
+                            cancel_ok = await self.order_manager.cancel_orders([order_hash], market_id=entry.get("market_id"))
+                        if cancel_ok:
+                            self._auto_sell_pending.pop(order_hash, None)
+                            self.logger.log(
+                                f"[AutoSell] [{entry.get('market_id')}] ⏱ Ордер на продажу не исполнен за "
+                                f"{expiry_sec}с — отменён. Закрой позицию {entry.get('side','').upper()} вручную!",
+                                level="WARN"
+                            )
+                            await self._send_telegram(
+                                f"⏱ Ордер авто-продажи отменён по истечении {expiry_sec}с\n"
+                                f"Маркет: {entry.get('title','')[:60]}\n"
+                                f"Закрой позицию {entry.get('side','').upper()} вручную: {entry.get('shares',0):.1f} шт"
+                            )
+                        else:
+                            self.logger.log(
+                                f"[AutoSell] [{entry.get('market_id')}] ⏱ Срок истёк, но отменить ордер не удалось — продолжаем мониторить",
+                                level="WARN"
+                            )
                         continue
                     if order_hash in open_ids:
                         continue

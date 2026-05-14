@@ -252,12 +252,13 @@ async def auth_middleware(request: Request, call_next):
 
     if _check_basic(request.headers):
         if request.method in ("POST", "PUT", "DELETE"):
+            host = request.headers.get("host", "")
+            expected = f"{request.url.scheme}://{host}"
             origin = request.headers.get("origin", "")
-            if origin:
-                host = request.headers.get("host", "")
-                expected = f"{request.url.scheme}://{host}"
-                if origin.rstrip("/") != expected.rstrip("/"):
-                    return Response("Forbidden: Origin mismatch", status_code=403)
+            referer = request.headers.get("referer", "")
+            source = origin or (referer.split("/")[0] + "//" + referer.split("/")[2] if "//" in referer else "")
+            if not source or source.rstrip("/") != expected.rstrip("/"):
+                return Response("Forbidden: Origin mismatch", status_code=403)
         return await call_next(request)
 
     return Response(
@@ -613,7 +614,7 @@ async def parser_tags():
 async def parser_config():
     cfg = load_config()
     key = cfg.get("parser_api_key", "")
-    return {"has_key": bool(key), "key_hint": f"...{key[-4:]}" if len(key) >= 4 else ("" if not key else key)}
+    return {"has_key": bool(key)}
 
 
 @app.put("/api/parser/config")

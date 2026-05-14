@@ -23,6 +23,7 @@ _DEFAULTS = {
     "auto_sell_enabled": False,
     "auto_sell_max_loss_pct": 15.0,
     "auto_sell_delay_sec": 0.0,
+    "auto_sell_order_expiry_sec": 0,
 }
 
 

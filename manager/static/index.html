@@ -1326,7 +1326,7 @@ async function initParser() {
     const r = await fetch('/api/parser/config');
     const cfg = await r.json();
     if (cfg.has_key) {
-      document.getElementById('p-key-hint').textContent = `Сохранён: ${cfg.key_hint}`;
+      document.getElementById('p-key-hint').textContent = `Ключ сохранён`;
     }
   } catch (e) {}
 }
