@@ -9,7 +9,6 @@ class _FakeAPI:
 
 
 class OrderManagerTests(unittest.IsolatedAsyncioTestCase):
-    @unittest.expectedFailure
     async def test_atomic_replace_should_not_accept_new_order_when_cancel_failed(self):
         manager = OrderManager(api_client=_FakeAPI(), market_info_cache={}, log_func=lambda *_: None)
 

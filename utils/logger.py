@@ -70,7 +70,7 @@ class BotLogger:
         self.event_bus.emit(entry)
 
     def get_recent(self, n: int = 100) -> list[dict]:
-        return self._recent[-n:]
+        return list(self._recent)[-n:]
 
     def __call__(self, message: str):
         """Позволяет передавать logger как log_func=logger."""
