@@ -201,8 +201,9 @@ class BotConfigRequest(BaseModel):
     predict_points_only: bool | None = None
     predict_points_poll_sec: int | None = None  # 60–7200
     auto_sell_enabled: bool | None = None
-    auto_sell_max_loss_pct: float | None = None  # 0.1–95.0
-    auto_sell_delay_sec: float | None = None     # 0–3600
+    auto_sell_max_loss_pct: float | None = None   # 0.1–95.0
+    auto_sell_delay_sec: float | None = None      # 0–3600
+    auto_sell_order_expiry_sec: int | None = None # 0=не отменять, иначе секунды
 
 
 @app.get("/api/config")
@@ -232,6 +233,8 @@ async def save_config(req: BotConfigRequest):
         updates["auto_sell_max_loss_pct"] = max(0.1, min(95.0, float(updates["auto_sell_max_loss_pct"])))
     if "auto_sell_delay_sec" in updates:
         updates["auto_sell_delay_sec"] = max(0.0, min(3600.0, float(updates["auto_sell_delay_sec"])))
+    if "auto_sell_order_expiry_sec" in updates:
+        updates["auto_sell_order_expiry_sec"] = max(0, min(86400, int(updates["auto_sell_order_expiry_sec"])))
     data = store.update(**updates)
     import config as cfg
     cfg.TELEGRAM_TOKEN = data.get("telegram_token", "")
@@ -241,6 +244,7 @@ async def save_config(req: BotConfigRequest):
     cfg.AUTO_SELL_ENABLED = bool(data.get("auto_sell_enabled", False))
     cfg.AUTO_SELL_MAX_LOSS_PCT = float(data.get("auto_sell_max_loss_pct", 15.0))
     cfg.AUTO_SELL_DELAY_SEC = float(data.get("auto_sell_delay_sec", 0.0))
+    cfg.AUTO_SELL_ORDER_EXPIRY_SEC = int(data.get("auto_sell_order_expiry_sec", 0))
     return {"ok": True, "restart_required": any(
         k in updates for k in ("api_key", "predict_account_address", "privy_wallet_private_key", "proxy")
     )}

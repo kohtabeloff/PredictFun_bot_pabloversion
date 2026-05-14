@@ -962,6 +962,7 @@ const T = {
     lbl_autosell_enabled: 'Продавать позицию автоматически после исполнения',
     lbl_autosell_loss: 'Макс. потеря при продаже, %',
     lbl_autosell_delay: 'Задержка перед продажей, сек',
+    lbl_autosell_expiry: 'Срок жизни sell-ордера, сек (0 = не отменять)',
     market_added: '✓ Рынок {id} добавлен',
     market_already: 'Рынок {id}: уже добавлен',
     market_error: '✗ Рынок {id}: {status}',
@@ -1060,6 +1061,7 @@ const T = {
     lbl_autosell_enabled: 'Automatically sell position after fill',
     lbl_autosell_loss: 'Max loss on sell, %',
     lbl_autosell_delay: 'Delay before sell, sec',
+    lbl_autosell_expiry: 'Sell order lifetime, sec (0 = never cancel)',
     market_added: '✓ Market {id} added',
     market_already: 'Market {id}: already added',
     market_error: '✗ Market {id}: {status}',
@@ -1984,6 +1986,7 @@ async function openBotParams() {
   document.getElementById('cfg-autosell-enabled').checked  = !!data.auto_sell_enabled;
   document.getElementById('cfg-autosell-loss').value       = data.auto_sell_max_loss_pct ?? 15;
   document.getElementById('cfg-autosell-delay').value      = data.auto_sell_delay_sec ?? 0;
+  document.getElementById('cfg-autosell-expiry').value     = data.auto_sell_order_expiry_sec ?? 0;
 
   _updateParamsModalLabels();
   document.getElementById('bot-params-modal').classList.add('open');
@@ -1999,7 +2002,8 @@ async function saveBotParams() {
     predict_points_poll_sec: parseInt(document.getElementById('cfg-points-poll').value) || 600,
     auto_sell_enabled:       document.getElementById('cfg-autosell-enabled').checked,
     auto_sell_max_loss_pct:  parseFloat(document.getElementById('cfg-autosell-loss').value) || 15,
-    auto_sell_delay_sec:     parseFloat(document.getElementById('cfg-autosell-delay').value) || 0,
+    auto_sell_delay_sec:          parseFloat(document.getElementById('cfg-autosell-delay').value) || 0,
+    auto_sell_order_expiry_sec:   parseInt(document.getElementById('cfg-autosell-expiry').value) || 0,
   };
 
   const hint = document.getElementById('params-hint');
@@ -2110,6 +2114,10 @@ async function saveBotParams() {
       <div class="modal-field">
         <label data-i18n="lbl_autosell_delay">Задержка перед продажей, сек</label>
         <input id="cfg-autosell-delay" type="number" min="0" max="3600" step="1" value="0" style="font-family:inherit">
+      </div>
+      <div class="modal-field">
+        <label data-i18n="lbl_autosell_expiry">Срок жизни sell-ордера, сек (0 = не отменять)</label>
+        <input id="cfg-autosell-expiry" type="number" min="0" max="86400" step="10" value="0" style="font-family:inherit">
       </div>
     </div>
 

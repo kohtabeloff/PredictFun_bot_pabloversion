@@ -87,6 +87,7 @@ async def main():
     cfg.AUTO_SELL_ENABLED = bool(saved.get("auto_sell_enabled", False))
     cfg.AUTO_SELL_MAX_LOSS_PCT = max(0.1, min(95.0, float(saved.get("auto_sell_max_loss_pct", 15.0))))
     cfg.AUTO_SELL_DELAY_SEC = max(0.0, min(3600.0, float(saved.get("auto_sell_delay_sec", 0.0))))
+    cfg.AUTO_SELL_ORDER_EXPIRY_SEC = max(0, min(86400, int(saved.get("auto_sell_order_expiry_sec", 0))))
 
     from config import WEB_HOST
     port = _parse_port()

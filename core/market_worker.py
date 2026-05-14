@@ -9,12 +9,10 @@ import asyncio
 import time
 from typing import Callable
 
+import config as cfg
 from core.calculator import Calculator
 from core.order_manager import OrderManager
 from models import MarketSettings, OrderRecord, OrderCalculation, MarketState
-
-
-REPOSITION_THRESHOLD = 0.005  # минимальный сдвиг цены для переставления
 
 
 class MarketWorker:
@@ -127,7 +125,7 @@ class MarketWorker:
         order = self.order_yes if side == "yes" else self.order_no
         if order is None:
             return False
-        return abs(order.price - new_price) > REPOSITION_THRESHOLD
+        return abs(order.price - new_price) > cfg.REPOSITION_MIN_PRICE_DELTA
 
     def _liquidity_dropped(self, side: str, orderbook: dict) -> bool:
         """Упала ли ликвидность перед нашим ордером ниже target_liquidity?"""

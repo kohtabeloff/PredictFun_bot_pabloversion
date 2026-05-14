@@ -44,6 +44,7 @@ MIN_ORDER_VALUE_USD = 1.0
 MIN_ORDER_PRICE = 0.001
 MAX_ORDER_PRICE = 0.999
 AMOUNT_PRECISION = 10**13  # округление wei
+REPOSITION_MIN_PRICE_DELTA = 0.005  # минимальный сдвиг цены для переставления ордера (0.5 цента)
 
 # WebSocket Pool
 WS_POOL_SIZE = 20                        # кол-во одновременных соединений
@@ -56,13 +57,14 @@ WS_POOL_CONNECT_STAGGER_MS = 80         # пауза между стартами
 AUTO_SELL_ENABLED = False        # выкл по умолчанию — включается из UI
 AUTO_SELL_MAX_LOSS_PCT = 15.0    # макс. потеря от цены входа в %
 AUTO_SELL_DELAY_SEC = 0.0        # пауза перед продажей (сек)
+AUTO_SELL_ORDER_EXPIRY_SEC = 0   # срок жизни sell-ордера в сек (0 = не отменять)
 
 # Points Filter
 POINTS_FILTER_ENABLED = False   # фильтр выкл по умолчанию — включается из UI
 POINTS_POLL_INTERVAL_SEC = 600  # как часто перепроверять поинты (10 мин)
 
 # Inspector
-INSPECTOR_INTERVAL_SEC = 10
+INSPECTOR_INTERVAL_SEC = 5
 EXECUTION_GUARD_INTERVAL_SEC = 3
 
 # Web

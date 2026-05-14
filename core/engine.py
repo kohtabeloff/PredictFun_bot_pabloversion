@@ -584,7 +584,7 @@ class BotEngine:
                 self.logger.log(f"[ExecutionGuard] ✗ {e}")
 
     async def _balance_loop(self):
-        """Каждые 5 мин обновляет баланс."""
+        """Каждые 30 сек обновляет баланс."""
         while self.running:
             try:
                 if self.api:
@@ -594,7 +594,7 @@ class BotEngine:
                         self.event_bus.emit({"type": "balance", "balance": balance})
             except Exception as e:
                 self.logger.log(f"[Balance] ⚠ Не удалось обновить баланс: {e}", level="WARN")
-            await asyncio.sleep(300)
+            await asyncio.sleep(30)
 
     async def _bootstrap_orderbooks_loop(self):
         """Подтягивает стартовые snapshots для маркетов, по которым WS ещё не прислал стакан."""
@@ -744,15 +744,33 @@ class BotEngine:
                 open_ids = {str(o.get("id") or o.get("orderId")) for o in open_orders}
 
                 _AUTO_SELL_TTL = 86400  # 24 часа — после этого запись удаляется
+                expiry_sec = cfg.AUTO_SELL_ORDER_EXPIRY_SEC
                 for order_hash in list(self._auto_sell_pending.keys()):
                     entry = self._auto_sell_pending.get(order_hash, {})
+                    age = time.time() - entry.get("placed_at", 0)
                     # TTL: удаляем записи старше 24 часов
-                    if time.time() - entry.get("placed_at", 0) > _AUTO_SELL_TTL:
+                    if age > _AUTO_SELL_TTL:
                         self._auto_sell_pending.pop(order_hash, None)
                         self.logger.log(
                             f"[AutoSell] [{entry.get('market_id')}] ⚠ Ордер на продажу не найден "
                             f"за 24 часа — удаляем из мониторинга. Проверь позицию вручную!",
                             level="WARN"
+                        )
+                        continue
+                    # Срок жизни ордера: если задан и истёк — отменяем
+                    if expiry_sec > 0 and age > expiry_sec and order_hash in open_ids:
+                        self._auto_sell_pending.pop(order_hash, None)
+                        self.logger.log(
+                            f"[AutoSell] [{entry.get('market_id')}] ⏱ Ордер на продажу не исполнен за "
+                            f"{expiry_sec}с — отменяем. Закрой позицию {entry.get('side','').upper()} вручную!",
+                            level="WARN"
+                        )
+                        if self.order_manager:
+                            await self.order_manager.cancel_orders([order_hash], market_id=entry.get("market_id"))
+                        await self._send_telegram(
+                            f"⏱ Ордер авто-продажи отменён по истечении {expiry_sec}с\n"
+                            f"Маркет: {entry.get('title','')[:60]}\n"
+                            f"Закрой позицию {entry.get('side','').upper()} вручную: {entry.get('shares',0):.1f} шт"
                         )
                         continue
                     if order_hash in open_ids:
