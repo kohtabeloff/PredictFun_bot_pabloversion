@@ -271,6 +271,7 @@ class BotEngine:
             if self.ws:
                 self.ws.unsubscribe(market_id)
         self._market_states.pop(market_id, None)
+        self._market_info_cache.pop(market_id, None)
         self.settings_store.remove(market_id)
         self._broadcast_state()
         return True
@@ -591,8 +592,8 @@ class BotEngine:
                     if balance is not None:
                         self.balance = balance
                         self.event_bus.emit({"type": "balance", "balance": balance})
-            except Exception:
-                pass
+            except Exception as e:
+                self.logger.log(f"[Balance] ⚠ Не удалось обновить баланс: {e}", level="WARN")
             await asyncio.sleep(300)
 
     async def _bootstrap_orderbooks_loop(self):
@@ -742,7 +743,18 @@ class BotEngine:
                     continue
                 open_ids = {str(o.get("id") or o.get("orderId")) for o in open_orders}
 
+                _AUTO_SELL_TTL = 86400  # 24 часа — после этого запись удаляется
                 for order_hash in list(self._auto_sell_pending.keys()):
+                    entry = self._auto_sell_pending.get(order_hash, {})
+                    # TTL: удаляем записи старше 24 часов
+                    if time.time() - entry.get("placed_at", 0) > _AUTO_SELL_TTL:
+                        self._auto_sell_pending.pop(order_hash, None)
+                        self.logger.log(
+                            f"[AutoSell] [{entry.get('market_id')}] ⚠ Ордер на продажу не найден "
+                            f"за 24 часа — удаляем из мониторинга. Проверь позицию вручную!",
+                            level="WARN"
+                        )
+                        continue
                     if order_hash in open_ids:
                         continue
                     detail = await self.api.get_order(order_hash)

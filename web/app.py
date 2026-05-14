@@ -60,12 +60,14 @@ async def auth_middleware(request: Request, call_next):
                             headers={"WWW-Authenticate": "Basic realm=\"PredictFun Bot\""})
 
         if request.method in ("POST", "PUT", "DELETE"):
+            host = request.headers.get("host", "")
+            expected = f"{request.url.scheme}://{host}"
             origin = request.headers.get("origin", "")
-            if origin:
-                host = request.headers.get("host", "")
-                expected = f"{request.url.scheme}://{host}"
-                if origin.rstrip("/") != expected.rstrip("/"):
-                    return Response("Forbidden: Origin mismatch", status_code=403)
+            referer = request.headers.get("referer", "")
+            # Берём origin, если есть. Иначе — hostname из referer
+            source = origin or (referer.split("/")[0] + "//" + referer.split("/")[2] if "//" in referer else "")
+            if not source or source.rstrip("/") != expected.rstrip("/"):
+                return Response("Forbidden: Origin mismatch", status_code=403)
 
     return await call_next(request)
 
@@ -208,11 +210,11 @@ async def get_config():
     store = app.state.config_store
     data = store.get()
     result = dict(data)
-    # Возвращаем только hint для всех чувствительных полей
+    # Для чувствительных полей возвращаем только флаг установлен/нет, само значение не отдаём
     for secret_field in ("privy_wallet_private_key", "api_key", "telegram_token"):
         val = result.get(secret_field, "")
         result[f"{secret_field}_set"] = bool(val)
-        result[secret_field] = f"...{val[-4:]}" if len(val) >= 4 else ""
+        result[secret_field] = ""  # никогда не отдаём содержимое, даже hint
     result["ui_password_set"] = bool(result.pop("ui_password", ""))
     return result
 

@@ -65,7 +65,7 @@ async def main():
         account = AccountInfo(
             api_key="",
             predict_account_address="0x0000000000000000000000000000000000000000",
-            privy_wallet_private_key="0000000000000000000000000000000000000000000000000000000000000001",
+            privy_wallet_private_key="",
         )
 
     event_bus = EventBus()
@@ -155,7 +155,7 @@ async def demo():
     dummy_account = AccountInfo(
         api_key="demo",
         predict_account_address="0x0000000000000000000000000000000000000000",
-        privy_wallet_private_key="0000000000000000000000000000000000000000000000000000000000000001",
+        privy_wallet_private_key="",
     )
 
     event_bus = EventBus()
@@ -183,7 +183,7 @@ async def demo():
     server = uvicorn.Server(config)
 
     logger.log("ДЕМО-РЕЖИМ: UI работает, торговля отключена")
-    logger.log(f"Открой в браузере: http://localhost:{WEB_PORT}")
+    logger.log(f"Открой в браузере: http://localhost:{port}")
 
     await asyncio.gather(server.serve(), return_exceptions=True)
 

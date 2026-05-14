@@ -263,29 +263,17 @@ class OrderManager:
         new_shares: float,
     ) -> OrderRecord | None:
         """
-        Атомарный replace: cancel и place летят параллельно.
-        Зазор минимален — оба запроса уходят почти одновременно.
+        Replace: сначала отменяем старый ордер, потом выставляем новый.
+        Последовательно — исключаем окно двойной позиции на бирже.
         """
         if old_order_id:
-            cancel_task = asyncio.create_task(
-                self.cancel_orders([old_order_id], market_id=market_id)
-            )
-            place_task = asyncio.create_task(
-                self.place_order(market_id, side, new_price, new_shares)
-            )
-            results = await asyncio.gather(cancel_task, place_task, return_exceptions=True)
-            cancel_ok = results[0] is True
-            new_record = results[1] if not isinstance(results[1], Exception) else None
-            # Если cancel не прошёл, но новый ордер выставился — оставляем новый ордер
-            # (worker начнёт его отслеживать), а старый станет orphan и inspector
-            # уберёт его в течение INSPECTOR_INTERVAL_SEC секунд.
-            # Отменять новый нельзя — тогда worker поставит третий ордер и проблема удвоится.
-            if not cancel_ok and new_record is not None:
+            cancel_ok = await self.cancel_orders([old_order_id], market_id=market_id)
+            if not cancel_ok:
                 self.log_func(
-                    f"[{market_id}] ⚠ cancel не прошёл — старый ордер стал orphan, "
-                    f"отслеживаем новый {new_record.order_id}"
+                    f"[{market_id}] ⚠ cancel не прошёл — пропускаем выставление нового ордера"
                 )
-            return new_record
+                return None
+            return await self.place_order(market_id, side, new_price, new_shares)
         else:
             return await self.place_order(market_id, side, new_price, new_shares)
 

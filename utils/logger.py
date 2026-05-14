@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import os
+from collections import deque
 from typing import Callable
 
 class EventBus:
@@ -41,7 +42,7 @@ class BotLogger:
         import config as cfg
         self.event_bus = event_bus
         self._log_file: str | None = None
-        self._recent: list[dict] = []  # последние 500 строк для новых подключений UI
+        self._recent: deque[dict] = deque(maxlen=500)  # последние 500 строк для новых подключений UI
         self._logs_dir = cfg.LOGS_DIR
         os.makedirs(self._logs_dir, exist_ok=True)
 
@@ -65,9 +66,7 @@ class BotLogger:
 
         # UI broadcast
         entry = {"type": "log", "ts": ts, "level": level, "msg": message}
-        self._recent.append(entry)
-        if len(self._recent) > 500:
-            self._recent.pop(0)
+        self._recent.append(entry)  # deque(maxlen=500) автоматически удаляет старые
         self.event_bus.emit(entry)
 
     def get_recent(self, n: int = 100) -> list[dict]:

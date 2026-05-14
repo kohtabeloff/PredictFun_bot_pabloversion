@@ -7,12 +7,12 @@ from models import AccountInfo
 
 
 def load_accounts(file_path: str | None = None) -> list[AccountInfo]:
-    if file_path is None:
-        import config as cfg
-        file_path = cfg.ACCOUNTS_FILE
     """
     Формат: api_key,predict_account_address,privy_wallet_private_key,proxy
     """
+    if file_path is None:
+        import config as cfg
+        file_path = cfg.ACCOUNTS_FILE
     accounts: list[AccountInfo] = []
     try:
         with open(file_path, "r", encoding="utf-8") as f:
