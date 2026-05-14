@@ -1918,6 +1918,7 @@ function _updateAccountModalLabels() {
 }
 
 async function openBotSettings() {
+  document.getElementById('bot-settings-modal').classList.add('open');
   const data = await apiFetch('GET', '/api/config');
   if (!data) return;
 
@@ -1932,7 +1933,6 @@ async function openBotSettings() {
   document.getElementById('cfg-ui-password').value   = '';
 
   _updateAccountModalLabels();
-  document.getElementById('bot-settings-modal').classList.add('open');
 }
 
 function closeBotSettings() {
@@ -1978,6 +1978,7 @@ function _updateParamsModalLabels() {
 }
 
 async function openBotParams() {
+  document.getElementById('bot-params-modal').classList.add('open');
   const data = await apiFetch('GET', '/api/config');
   if (!data) return;
 
@@ -1989,7 +1990,6 @@ async function openBotParams() {
   document.getElementById('cfg-autosell-expiry').value     = data.auto_sell_order_expiry_sec ?? 0;
 
   _updateParamsModalLabels();
-  document.getElementById('bot-params-modal').classList.add('open');
 }
 
 function closeBotParams() {
