@@ -63,6 +63,7 @@ class BotEngine:
         self._global_defaults: dict = {}  # настройки по умолчанию для новых маркетов
         self._bootstrap_trigger: asyncio.Event = asyncio.Event()
         self._bootstrap_fails: dict[str, int] = {}  # market_id -> кол-во неудачных попыток
+        self._cancelling: bool = False  # флаг: cancel_all в процессе — новые маркеты добавляются disabled
 
     # ─────────────────────────────────────────────────────────────────────────
     # Старт / стоп
@@ -239,7 +240,8 @@ class BotEngine:
                 self._market_info_cache[mid] = info
                 self._bootstrap_fails.pop(mid, None)
                 await self._start_worker(mid)
-                if force_disabled:
+                # force_disabled явный ИЛИ cancel_all запущен в этот момент — выключаем воркер
+                if force_disabled or self._cancelling:
                     worker = self._workers.get(mid)
                     if worker:
                         worker.settings = worker.settings.model_copy(update={"enabled": False})
@@ -277,6 +279,7 @@ class BotEngine:
         """Отменяет все ордера и приостанавливает стратегии в памяти.
         enabled не пишется в settings.json — при перезапуске всё восстановится.
         Возвращает список market_id у которых ордера не удалось снять."""
+        self._cancelling = True  # блокируем запуск новых воркеров в enabled=True
         failed: list[str] = []
         for worker in list(self._workers.values()):
             worker.settings = worker.settings.model_copy(update={"enabled": False})
@@ -302,6 +305,7 @@ class BotEngine:
             )
         else:
             self.logger.log("✓ Все ордера отменены, стратегии приостановлены")
+        self._cancelling = False  # снимаем блокировку — добавление новых маркетов снова в обычном режиме
         self._broadcast_state()
         return failed
 
