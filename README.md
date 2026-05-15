@@ -136,8 +136,8 @@ cd predictfun_bot
 
 ### Create virtual environment and install dependencies
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -145,14 +145,11 @@ pip install -r requirements.txt
 
 ## 5. Configuring the bot
 
-Create the config file from the example:
+The easiest way to configure the bot is through the web dashboard — click the **🔑 Account** button after starting. No need to edit files manually.
+
+If you prefer to set up credentials before first launch, create the config file:
 ```bash
 cp bot_config.json.example bot_config.json
-nano bot_config.json
-```
-
-Or create it manually:
-```bash
 nano bot_config.json
 ```
 
@@ -184,6 +181,8 @@ Fill in the fields:
 
 Save the file: `Ctrl+O`, then `Ctrl+X`.
 
+> All of these fields can also be updated at any time through the **🔑 Account** button in the dashboard — no need to edit files directly.
+
 > **New account?** If you just registered on Predict.fun and haven't made any trades yet, the bot won't be able to connect. Manually buy shares in any market for any amount (even $1) first — this activates your account and the bot will work normally after that.
 
 ---
@@ -193,13 +192,15 @@ Save the file: `Ctrl+O`, then `Ctrl+X`.
 Make sure you're in the bot folder:
 ```bash
 cd ~/predictfun_bot
-source venv/bin/activate
+source .venv/bin/activate
 ```
 
 Start the bot in the background:
 ```bash
-nohup venv/bin/python main.py >> logs/session.log 2>&1 &
+nohup .venv/bin/python main.py --autostart >> logs/session.log 2>&1 &
 ```
+
+The `--autostart` flag makes the bot connect automatically and reload your saved markets on startup.
 
 Then open the web dashboard in your browser:
 ```
@@ -242,9 +243,9 @@ After=network.target
 Type=simple
 User=YOUR_USER
 WorkingDirectory=/home/YOUR_USER/predictfun_bot
-ExecStart=/home/YOUR_USER/predictfun_bot/venv/bin/python main.py
+ExecStart=/home/YOUR_USER/predictfun_bot/.venv/bin/python main.py --autostart
 Restart=always
-RestartSec=10
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -286,9 +287,9 @@ After=network.target
 Type=simple
 User=YOUR_USER
 WorkingDirectory=/home/YOUR_USER/predictfun_bot
-ExecStart=/home/YOUR_USER/predictfun_bot/venv/bin/python run_manager.py
+ExecStart=/home/YOUR_USER/predictfun_bot/.venv/bin/python run_manager.py --port 8000
 Restart=always
-RestartSec=10
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
@@ -314,20 +315,22 @@ Open `http://YOUR_SERVER_IP:8080` in your browser. The main controls are:
 | **START** | Connects the bot to Predict.fun API and WebSocket |
 | **Add Markets** | Add markets by ID |
 | **Global Settings** | Set parameters for all markets at once |
-| **Run All** | Start placing orders on all markets |
 | **▶ / ⏸** | Start or pause an individual market |
 | **Cancel All Orders** | Withdraw all active orders from the book — bot pauses briefly then repositions |
 | **Remove All Markets** | Clear the market list entirely |
-| **Export List** | Download all market IDs as a `.txt` file |
+| **Export List (.txt)** | Download all market IDs as a `.txt` file |
+| **Export with Settings (.json)** | Download market list with per-market settings as a `.json` file |
+| **Import (.json)** | Import a previously exported `.json` file |
+| **⚙ Parameters** | Bot-wide parameters: points filter, auto-sell settings |
+| **🔑 Account** | Credentials: API key, account address, private key, Telegram, proxy, UI password |
 | **Manager** | Open the multi-account dashboard (port 8000) |
-| **⚙** | Account settings (API key, address, private key, Telegram) |
 
 ### Workflow
 
-1. Press **START** — the bot connects and restores your saved markets (paused by default)
+1. Press **START** (or use `--autostart` to do this automatically) — the bot connects and restores your saved markets
 2. Click **Add Markets**, paste market IDs — they'll be added in a paused state so you can configure them first
 3. In **Global Settings**, set your order size, spread, and other parameters — click **Apply to All**
-4. Press **Run All** — the bot starts placing orders
+4. Press **▶** on each market (or use individual market controls) to start placing orders
 5. Watch the **Logs** tab to see what the bot is doing in real time
 
 ### Manager (port 8000)
@@ -361,15 +364,17 @@ When configured, the bot sends a Telegram message whenever an order gets filled 
 To set it up:
 1. Create a bot via [@BotFather](https://t.me/BotFather) — it'll give you a token
 2. Get your chat ID from [@userinfobot](https://t.me/userinfobot)
-3. Enter both into `bot_config.json` (`telegram_token` and `telegram_chat_id`)
+3. Enter both via the **🔑 Account** button in the dashboard (or directly in `bot_config.json`)
 
 ### Proxy support
 
-If you run multiple accounts on one server, Predict.fun sees them all from the same IP. Assign each account a different proxy in the settings (⚙) — field **Proxy**. Format: `http://host:port` or `http://user:pass@host:port`.
+If you run multiple accounts on one server, Predict.fun sees them all from the same IP. Assign each account a different proxy in **🔑 Account** — field **Proxy**. Format: `http://host:port` or `http://user:pass@host:port`.
 
 ---
 
 ## 9. Settings reference
+
+### Order parameters
 
 | Setting | Default | Description |
 |---------|---------|-------------|
@@ -378,11 +383,27 @@ If you run multiple accounts on one server, Predict.fun sees them all from the s
 | **Min orders before** | 0 (off) | Minimum number of orders ahead of yours in the queue. Set to 0 to disable. |
 | **Max auto-spread (%)** | 6% | Maximum distance from the mid price the bot will place orders. Wider = more fill chance, more risk. |
 | **Min spread (¢)** | 0.2¢ | Minimum distance from mid price in cents. Prevents placing orders too close to the current price. |
+| **Reposition delta (¢)** | — | Minimum price movement (in cents) required to trigger repositioning. Prevents excessive order churn on tiny price movements. |
 | **Liquidity mode** | BID | `BID` — standard mode. `ASK` — alternative liquidity mode. |
 | **Side** | Both | Which side to make markets on: `Both`, `YES only`, or `NO only`. |
 | **Reposition limit** | 0 (off) | Max number of repositions within the volatility window before cooldown kicks in. Set to 0 to disable. |
 | **Volatility window (sec)** | — | Time window in seconds for counting repositions. |
 | **Volatility cooldown (sec)** | — | How long the bot pauses after hitting the reposition limit. |
+
+### Points filter (⚙ Parameters)
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Points filter** | Off | When enabled, the bot only places orders in markets that currently have active point rewards. Checked every N seconds (configurable). |
+
+### Auto-sell (⚙ Parameters)
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Auto-sell** | Off | When enabled, the bot automatically places a sell order after a fill. |
+| **Max loss % on sell** | 15% | Maximum acceptable loss when selling the filled position. |
+| **Delay before sell (sec)** | — | How long to wait after a fill before placing the sell order. |
+| **Sell order lifetime (sec)** | — | How long the sell order stays open. Set to 0 to keep it open indefinitely. |
 
 ---
 
@@ -396,7 +417,9 @@ If you run multiple accounts on one server, Predict.fun sees them all from the s
 
 **Volatility protection matters.** In fast-moving markets, the bot can reposition many times in a row, paying fees each time. Set the reposition limit and volatility window to protect yourself.
 
-**Use a UI password.** If your VPS is publicly accessible, set a `ui_password` in `bot_config.json` so only you can access the dashboard.
+**Use a UI password.** If your VPS is publicly accessible, set a `ui_password` in `bot_config.json` (or via **🔑 Account**) so only you can access the dashboard.
+
+**WebSocket pool.** The bot maintains a pool of 20 WebSocket connections with automatic rebalancing every 2 minutes. This gives the bot fast, reliable market data even when monitoring many markets at once — no action needed on your part.
 
 ---
 
@@ -408,17 +431,27 @@ SSH into your server. First, find the bot folder — it's wherever you cloned th
 ls ~
 ```
 
-Navigate into it (replace `bot` with your folder name) and run:
+Navigate into it (replace `predictfun_bot` with your folder name) and run:
 
 ```bash
-cd ~/bot
+cd ~/predictfun_bot
 git pull
-sudo systemctl restart predictfun-manager.service
 ```
 
-The trading bot keeps running — only the Manager (port 8000) restarts to pick up new files.
+Then restart whichever services changed:
 
-> If the update changes core bot files (`main.py`, `core/`, `api/`) — restart the bot too: `sudo systemctl restart predictfun-bot.service`. This briefly stops trading and cancels active orders.
+```bash
+# If only the Manager or UI changed:
+sudo systemctl restart predictfun-manager.service
+
+# If core bot files changed (main.py, core/, api/):
+sudo systemctl restart predictfun-bot.service
+
+# When in doubt, restart both:
+sudo systemctl restart predictfun-bot.service predictfun-manager.service
+```
+
+> Restarting `predictfun-bot` briefly stops trading and cancels active orders. With `--autostart`, the bot reconnects and resumes automatically.
 
 ---
 
