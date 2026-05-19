@@ -39,7 +39,8 @@ class MarketSettings(BaseModel):
 
 class OrderRecord(BaseModel):
     """Информация о выставленном ордере."""
-    order_id: str
+    order_id: str       # числовой ID биржи (для cancel и сравнения с open_orders)
+    order_hash: str = ""  # хеш блокчейна (для get_order)
     market_id: str
     side: str  # "yes" | "no"
     price: float

@@ -58,6 +58,7 @@ class OrderManager:
         self.market_info_cache = market_info_cache  # market_id -> dict
         self.log_func = log_func
         self._blocked: dict[tuple, float] = {}  # (market_id, side) -> until_ts
+        self.last_order_at: float = 0.0  # время последнего успешно выставленного ордера
         self._precision_errors: dict[tuple, int] = {}
 
     def _make_builder(self):
@@ -234,9 +235,11 @@ class OrderManager:
                 od = resp.get("data", {})
                 oid = str(od.get("id") or od.get("orderId") or "")
                 self._precision_errors[key] = 0
+                self.last_order_at = time.time()
                 self.log_func(f"[{market_id}] {side.upper()} ✓ {price*100:.1f}¢ id={oid}")
                 return OrderRecord(
                     order_id=oid,
+                    order_hash=order_hash,
                     market_id=market_id,
                     side=side,
                     price=price,
@@ -339,7 +342,8 @@ class OrderManager:
     async def place_sell_limit_auto(
         self, market_id: str, side: str, shares: float,
         fill_price: float, max_loss_pct: float,
-    ) -> str | None:
+    ) -> tuple[str, str] | None:
+        """Возвращает (order_hash, server_id) при успехе, None при ошибке."""
         """
         Размещает лимитный ордер на продажу с контролируемыми потерями.
         Цена: fill_price * (1 - max_loss_pct/100), округлённая вверх до тика.
@@ -373,11 +377,10 @@ class OrderManager:
         body, order_hash = result
         resp = await self.api.place_order(body)
         if resp and isinstance(resp, dict) and resp.get("success"):
-            # Используем биржевой id (как в place_order) — именно он нужен для get_order/cancel
             od = resp.get("data", {})
-            server_id = str(od.get("id") or od.get("orderId") or order_hash)
-            self.log_func(f"[{market_id}] ✓ Ордер на продажу выставлен id={server_id}")
-            return server_id
+            server_id = str(od.get("id") or od.get("orderId") or "")
+            self.log_func(f"[{market_id}] ✓ Ордер на продажу выставлен id={server_id} hash={order_hash[:10]}...")
+            return order_hash, server_id
 
         self.log_func(f"[{market_id}] ✗ place_sell_limit_auto не удалась: {resp}")
         return None

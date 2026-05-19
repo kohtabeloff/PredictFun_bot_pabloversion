@@ -190,6 +190,13 @@ class APIClient:
             return raw
         return None
 
+    async def get_recent_filled_orders(self, limit: int = 100) -> list[dict] | None:
+        """Последние исполненные ордера. Возвращает None при ошибке API."""
+        page = await self._get_raw_page("/v1/orders", {"status": "FILLED", "first": str(limit)})
+        if page is None:
+            return None
+        return page.get("data", [])
+
     async def place_order(self, body: dict) -> dict | None:
         """Выставить лимитный ордер. Возвращает сырой ответ API."""
         return await self._post("/v1/orders", body)

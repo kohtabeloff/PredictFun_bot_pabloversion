@@ -58,6 +58,8 @@ class BotEngine:
         self._state = "stopped"  # stopped | starting | running | stopping
         self._state_lock = asyncio.Lock()
         self.balance: float | None = None
+        self._inactivity_alert_sent: bool = False  # флаг: уведомление о зависании уже отправлено
+        self._inactivity_alert_task: asyncio.Task | None = None
         self.ws_connected = False
         self._guard_failures: dict[str, int] = {}  # order_id -> consecutive fail count
         self._global_defaults: dict = {}  # настройки по умолчанию для новых маркетов
@@ -131,8 +133,10 @@ class BotEngine:
             self._bootstrap_task = asyncio.create_task(self._bootstrap_orderbooks_loop())
             self._points_filter_task = asyncio.create_task(self._points_filter_loop())
             self._auto_sell_monitor_task = asyncio.create_task(self._auto_sell_monitor_loop())
+            self._inactivity_alert_task = asyncio.create_task(self._inactivity_alert_loop())
 
             self.running = True
+            self._inactivity_alert_sent = False
             self._state = "running"
             self.logger.log("✓ Бот запущен")
             self._broadcast_state()
@@ -142,12 +146,12 @@ class BotEngine:
             # Cleanup частично поднятых ресурсов
             for task in [self._inspector_task, self._execution_guard_task, self._balance_task,
                          self._bootstrap_task, self._points_filter_task,
-                         self._auto_sell_monitor_task]:
+                         self._auto_sell_monitor_task, self._inactivity_alert_task]:
                 if task and not task.done():
                     task.cancel()
             self._inspector_task = self._execution_guard_task = self._balance_task = \
                 self._bootstrap_task = self._points_filter_task = \
-                self._auto_sell_monitor_task = None
+                self._auto_sell_monitor_task = self._inactivity_alert_task = None
             if self.ws:
                 self.ws.stop()
                 self.ws = None
@@ -199,7 +203,7 @@ class BotEngine:
         # Отменяем фоновые задачи
         for task in [self._inspector_task, self._execution_guard_task, self._balance_task,
                      self._bootstrap_task, self._points_filter_task,
-                     self._auto_sell_monitor_task]:
+                     self._auto_sell_monitor_task, self._inactivity_alert_task]:
             if task and not task.done():
                 task.cancel()
 
@@ -486,7 +490,8 @@ class BotEngine:
 
                             _TERMINAL_STATUSES = {"FILLED", "CANCELLED", "EXPIRED", "REJECTED"}
 
-                            detail = await self.api.get_order(order.order_id)
+                            lookup_id = order.order_hash or order.order_id
+                            detail = await self.api.get_order(lookup_id)
                             if detail and detail.get("status") == "FILLED":
                                 self._guard_failures.pop(order.order_id, None)
 
@@ -560,7 +565,53 @@ class BotEngine:
                                 else:
                                     worker.order_no = None
                             elif detail is None:
-                                # Ошибка API — НЕ сбрасываем, проверим в след. цикле
+                                # Ошибка API — пробуем фолбек через список filled ордеров
+                                if fail_count == 0:
+                                    filled_list = await self.api.get_recent_filled_orders(limit=100)
+                                    if filled_list is not None:
+                                        filled_ids = {
+                                            str(o.get("id") or o.get("orderId"))
+                                            for o in filled_list
+                                        }
+                                        if order.order_id in filled_ids:
+                                            self._guard_failures.pop(order.order_id, None)
+                                            filled_after = time.time() - order.placed_at
+                                            life_str = f"{int(filled_after // 60)}м {int(filled_after % 60)}с"
+                                            self.logger.log(
+                                                f"⚠ [{worker.market_id}] {side.upper()} ИСПОЛНИЛАСЬ! "
+                                                f"(фолбек) Цена {order.price*100:.1f}¢ × {order.shares:.1f} шт "
+                                                f"(жила {life_str})"
+                                            )
+                                            filled_order = order
+                                            if side == "yes":
+                                                worker.order_yes = None
+                                            else:
+                                                worker.order_no = None
+                                            import config as cfg
+                                            if cfg.AUTO_SELL_ENABLED:
+                                                asyncio.create_task(self._trigger_auto_sell(
+                                                    worker, side, filled_order
+                                                ))
+                                            tg_msg = (
+                                                f"⚠ Лимитка исполнилась!\n"
+                                                f"Маркет: {worker.market_info.get('title', worker.market_id)}\n"
+                                                f"Сторона: {side.upper()}\n"
+                                                f"Цена: {order.price*100:.1f}¢ × {order.shares:.1f} шт\n"
+                                                f"Сумма: ${order.price * order.shares:.2f}\n"
+                                                f"Жила: {life_str}\n"
+                                            )
+                                            tg_msg += "🔄 Авто-продажа запускается..." if cfg.AUTO_SELL_ENABLED else "❗ Закрой позицию вручную"
+                                            await self._send_telegram(tg_msg)
+                                            self.event_bus.emit({
+                                                "type": "execution_alert",
+                                                "market_id": worker.market_id,
+                                                "side": side,
+                                                "price": order.price,
+                                                "shares": order.shares,
+                                            })
+                                            continue
+
+                                # НЕ сбрасываем, проверим в след. цикле
                                 self._guard_failures[order.order_id] = fail_count + 1
                                 new_count = self._guard_failures[order.order_id]
                                 if new_count == 1:
@@ -694,14 +745,15 @@ class BotEngine:
             return
 
         title = worker.market_info.get("question") or worker.market_info.get("title", worker.market_id)
-        order_hash = await self.order_manager.place_sell_limit_auto(
+        result = await self.order_manager.place_sell_limit_auto(
             market_id=worker.market_id,
             side=side,
             shares=order.shares,
             fill_price=order.price,
             max_loss_pct=max_loss,
         )
-        if order_hash:
+        if result:
+            order_hash, server_id = result
             market_info = self._market_info_cache.get(worker.market_id, {})
             dp = market_info.get("decimalPrecision", 3)
             import math
@@ -717,6 +769,7 @@ class BotEngine:
                 "sell_price": sell_price,
                 "shares": order.shares,
                 "placed_at": time.time(),
+                "server_id": server_id,
             }
             await self._send_telegram(
                 f"📤 Авто-продажа выставлена!\n"
@@ -724,7 +777,7 @@ class BotEngine:
                 f"Продажа: {sell_price*100:.1f}¢ × {order.shares:.1f} шт\n"
                 f"Куплено: {order.price*100:.1f}¢ | Макс.потери: {max_loss}%"
             )
-        else:
+        if not result:
             await self._send_telegram(
                 f"⚠ Авто-продажа НЕ УДАЛАСЬ!\n"
                 f"Маркет: {title[:60]}\n"
@@ -757,11 +810,13 @@ class BotEngine:
                             level="WARN"
                         )
                         continue
+                    # server_id — числовой ID для сравнения с open_ids и отмены
+                    sell_server_id = entry.get("server_id") or order_hash
                     # Срок жизни ордера: если задан и истёк — отменяем
-                    if expiry_sec > 0 and age > expiry_sec and order_hash in open_ids:
+                    if expiry_sec > 0 and age > expiry_sec and sell_server_id in open_ids:
                         cancel_ok = False
                         if self.order_manager:
-                            cancel_ok = await self.order_manager.cancel_orders([order_hash], market_id=entry.get("market_id"))
+                            cancel_ok = await self.order_manager.cancel_orders([sell_server_id], market_id=entry.get("market_id"))
                         if cancel_ok:
                             self._auto_sell_pending.pop(order_hash, None)
                             self.logger.log(
@@ -780,7 +835,7 @@ class BotEngine:
                                 level="WARN"
                             )
                         continue
-                    if order_hash in open_ids:
+                    if sell_server_id in open_ids:
                         continue
                     detail = await self.api.get_order(order_hash)
                     if not detail:
@@ -814,6 +869,41 @@ class BotEngine:
                         )
             except Exception as e:
                 self.logger.log(f"[AutoSell Monitor] ✗ {e}")
+
+    async def _inactivity_alert_loop(self):
+        """Каждую минуту проверяет: если не было новых ордеров 10+ минут — шлёт Telegram-уведомление."""
+        _INACTIVITY_THRESHOLD = 600  # 10 минут
+        _CHECK_INTERVAL = 60
+
+        # Ждём 10 минут с момента старта прежде чем начинать проверку
+        await asyncio.sleep(_INACTIVITY_THRESHOLD)
+
+        while self.running:
+            await asyncio.sleep(_CHECK_INTERVAL)
+            try:
+                if not self.order_manager:
+                    continue
+                last_at = self.order_manager.last_order_at
+                if last_at == 0.0:
+                    continue
+                inactive_sec = time.time() - last_at
+                if inactive_sec >= _INACTIVITY_THRESHOLD and not self._inactivity_alert_sent:
+                    self._inactivity_alert_sent = True
+                    mins = int(inactive_sec // 60)
+                    self.logger.log(
+                        f"[Inactivity] ⚠ Нет новых ордеров уже {mins} мин — возможны проблемы с биржей",
+                        level="WARN"
+                    )
+                    await self._send_telegram(
+                        f"⚠ Бот не выставляет ордера уже {mins} мин\n"
+                        f"Возможны проблемы с API или WebSocket PredictFun.\n"
+                        f"Проверь состояние бота в менеджере."
+                    )
+                elif inactive_sec < _INACTIVITY_THRESHOLD and self._inactivity_alert_sent:
+                    # Бот снова активен — сбрасываем флаг чтобы следующий сбой снова дал уведомление
+                    self._inactivity_alert_sent = False
+            except Exception as e:
+                self.logger.log(f"[Inactivity] ✗ {e}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Points filter
