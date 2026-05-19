@@ -213,6 +213,11 @@ class BotEngine:
         if self.api:
             await self.api.close()
 
+        # Сбрасываем состояние фильтра поинтов — при следующем старте
+        # воркеры пересоздаются из settings.json, фильтр перепроверит всё заново
+        self._points_blocked.clear()
+        self._market_points_status.clear()
+
         self._state = "stopped"
         self.logger.log("Бот остановлен")
         self._broadcast_state()
