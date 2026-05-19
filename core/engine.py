@@ -796,6 +796,7 @@ class BotEngine:
                     continue
                 open_ids = {str(o.get("id") or o.get("orderId")) for o in open_orders}
 
+                import config as cfg
                 _AUTO_SELL_TTL = 86400  # 24 часа — после этого запись удаляется
                 expiry_sec = cfg.AUTO_SELL_ORDER_EXPIRY_SEC
                 for order_hash in list(self._auto_sell_pending.keys()):
