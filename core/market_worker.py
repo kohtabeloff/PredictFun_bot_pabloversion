@@ -43,6 +43,7 @@ class MarketWorker:
         self.last_orderbook: dict | None = None
         self.diagnostic: str = "waiting_orderbook"
         self.last_update = 0.0
+        self._last_stale_warn_at = 0.0
 
         # Счётчик переставлений (для защиты от волатильности)
         self._reposition_times: list[float] = []
@@ -164,6 +165,37 @@ class MarketWorker:
     def _record_reposition(self):
         self._reposition_times.append(time.time())
 
+    def _log_reposition_failure(
+        self, side: str, old_id: str, target_price: float, current_price: float
+    ):
+        self.log_func(
+            f"[{self.market_id}] {side.upper()} перестановка не удалась: "
+            f"старый ордер {old_id} снят из памяти, но новый не выставлен "
+            f"(старая цена={current_price*100:.1f}¢, target={target_price*100:.1f}¢)"
+        )
+
+    def _maybe_log_stale_orderbook(self):
+        if self.last_update <= 0:
+            return
+        if not (self.order_yes or self.order_no):
+            return
+        now = time.time()
+        stale_for = now - self.last_update
+        if stale_for < cfg.WORKER_STALE_ORDERBOOK_WARN_SEC:
+            return
+        if now - self._last_stale_warn_at < cfg.WORKER_STALE_ORDERBOOK_WARN_SEC:
+            return
+        self._last_stale_warn_at = now
+        active = []
+        if self.order_yes:
+            active.append(f"YES {self.order_yes.price*100:.1f}¢ id={self.order_yes.order_id}")
+        if self.order_no:
+            active.append(f"NO {self.order_no.price*100:.1f}¢ id={self.order_no.order_id}")
+        self.log_func(
+            f"[{self.market_id}] ⚠ Нет свежего стакана уже {stale_for:.0f}с при активных ордерах: "
+            + ", ".join(active)
+        )
+
     def _get_safe_price(self, calc: OrderCalculation, side: str) -> float:
         """При волатильности возвращает цену на максимальном расстоянии от mid."""
         max_spread = (self.settings.max_auto_spread or 6.0) / 100.0
@@ -228,6 +260,7 @@ class MarketWorker:
                     if ok:
                         self.order_yes = None
                 elif self._should_reposition("yes", target_yes) or self._liquidity_dropped("yes", orderbook):
+                    current_price = self.order_yes.price
                     old_id = self.order_yes.order_id
                     self._pending_cancel_ids.add(old_id)
                     self.order_yes = None
@@ -243,6 +276,8 @@ class MarketWorker:
                         self.order_yes = new_order
                         if new_order:
                             self._record_reposition()
+                        else:
+                            self._log_reposition_failure("yes", old_id, target_yes, current_price)
 
         elif self.order_yes is not None:
             # Настройки изменились — отменяем YES
@@ -282,6 +317,7 @@ class MarketWorker:
                     if ok:
                         self.order_no = None
                 elif self._should_reposition("no", target_no) or self._liquidity_dropped("no", orderbook):
+                    current_price = self.order_no.price
                     old_id = self.order_no.order_id
                     self._pending_cancel_ids.add(old_id)
                     self.order_no = None
@@ -297,6 +333,8 @@ class MarketWorker:
                         self.order_no = new_order
                         if new_order:
                             self._record_reposition()
+                        else:
+                            self._log_reposition_failure("no", old_id, target_no, current_price)
 
         elif self.order_no is not None:
             ok = await self.order_manager.cancel_orders([self.order_no.order_id], self.market_id)
@@ -337,6 +375,7 @@ class MarketWorker:
                         break
                     await self._process(orderbook)
                 except asyncio.TimeoutError:
+                    self._maybe_log_stale_orderbook()
                     continue
                 except Exception as e:
                     self.log_func(f"[{self.market_id}] ✗ Ошибка воркера: {e}")

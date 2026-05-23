@@ -521,6 +521,10 @@ class BotEngine:
                                     mid_price = lc.mid_price_yes if side == "yes" else lc.mid_price_no
                                     spread = lc.spread_yes if side == "yes" else lc.spread_no
                                     market_ctx = f", mid={mid_price*100:.1f}¢, спред={spread*100:.1f}%"
+                                worker_last_update = getattr(worker, "last_update", 0.0)
+                                if worker_last_update:
+                                    ws_age = time.time() - worker_last_update
+                                    market_ctx += f", последний стакан {ws_age:.1f}с назад"
 
                                 self.logger.log(
                                     f"⚠ [{worker.market_id}] {side.upper()} ИСПОЛНИЛАСЬ! "
@@ -598,10 +602,15 @@ class BotEngine:
                                             self._guard_failures.pop(order.order_id, None)
                                             filled_after = time.time() - order.placed_at
                                             life_str = f"{int(filled_after // 60)}м {int(filled_after % 60)}с"
+                                            ws_ctx = ""
+                                            worker_last_update = getattr(worker, "last_update", 0.0)
+                                            if worker_last_update:
+                                                ws_age = time.time() - worker_last_update
+                                                ws_ctx = f", последний стакан {ws_age:.1f}с назад"
                                             self.logger.log(
                                                 f"⚠ [{worker.market_id}] {side.upper()} ИСПОЛНИЛАСЬ! "
                                                 f"(фолбек) Цена {order.price*100:.1f}¢ × {order.shares:.1f} шт "
-                                                f"(жила {life_str})"
+                                                f"(жила {life_str}{ws_ctx})"
                                             )
                                             filled_order = order
                                             if side == "yes":
