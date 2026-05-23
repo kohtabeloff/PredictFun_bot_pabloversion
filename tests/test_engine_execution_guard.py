@@ -45,6 +45,33 @@ class _UnknownStatusAPI:
         return {"status": "EXPIRED"}
 
 
+class _HashMissIdHitAPI:
+    def __init__(self):
+        self.calls = []
+
+    async def get_open_orders(self):
+        return []
+
+    async def get_order(self, order_id):
+        self.calls.append(order_id)
+        if order_id == "hash-o3":
+            return None
+        if order_id == "o3":
+            return {"status": "FILLED"}
+        return None
+
+
+class _FilledListHashAPI:
+    async def get_open_orders(self):
+        return []
+
+    async def get_order(self, order_id):
+        return None
+
+    async def get_recent_filled_orders(self, limit=100):
+        return [{"order": {"hash": "hash-o4"}, "status": "FILLED"}]
+
+
 class _OrderManagerStub:
     def __init__(self):
         self.calls = []
@@ -130,6 +157,71 @@ class ExecutionGuardTests(unittest.IsolatedAsyncioTestCase):
         await self._run_single_guard_iteration(engine)
 
         self.assertIsNone(worker.order_yes)
+
+    async def test_guard_falls_back_to_order_id_when_hash_lookup_misses(self):
+        telegram_msgs = []
+        engine = self._make_engine()
+        engine.api = _HashMissIdHitAPI()
+        engine.order_manager = _OrderManagerStub()
+
+        async def _capture_telegram(msg):
+            telegram_msgs.append(msg)
+
+        engine._send_telegram = _capture_telegram
+
+        worker = SimpleNamespace(
+            market_id="m3",
+            market_info={"title": "Market 3"},
+            order_yes=OrderRecord(
+                order_id="o3",
+                order_hash="hash-o3",
+                market_id="m3",
+                side="yes",
+                price=0.51,
+                shares=7,
+            ),
+            order_no=None,
+            last_calc=OrderCalculation(mid_price_yes=0.52, mid_price_no=0.48),
+        )
+        engine._workers = {"m3": worker}
+
+        await self._run_single_guard_iteration(engine)
+
+        self.assertIsNone(worker.order_yes)
+        self.assertEqual(engine.api.calls, ["hash-o3", "o3"])
+        self.assertEqual(len(telegram_msgs), 1)
+
+    async def test_guard_matches_filled_fallback_by_order_hash(self):
+        telegram_msgs = []
+        engine = self._make_engine()
+        engine.api = _FilledListHashAPI()
+        engine.order_manager = _OrderManagerStub()
+
+        async def _capture_telegram(msg):
+            telegram_msgs.append(msg)
+
+        engine._send_telegram = _capture_telegram
+
+        worker = SimpleNamespace(
+            market_id="m4",
+            market_info={"title": "Market 4"},
+            order_yes=OrderRecord(
+                order_id="o4",
+                order_hash="hash-o4",
+                market_id="m4",
+                side="yes",
+                price=0.22,
+                shares=9,
+            ),
+            order_no=None,
+            last_calc=OrderCalculation(mid_price_yes=0.24, mid_price_no=0.76),
+        )
+        engine._workers = {"m4": worker}
+
+        await self._run_single_guard_iteration(engine)
+
+        self.assertIsNone(worker.order_yes)
+        self.assertEqual(len(telegram_msgs), 1)
 
 
 async def _async_noop():

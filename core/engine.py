@@ -495,8 +495,17 @@ class BotEngine:
 
                             _TERMINAL_STATUSES = {"FILLED", "CANCELLED", "EXPIRED", "REJECTED"}
 
-                            lookup_id = order.order_hash or order.order_id
-                            detail = await self.api.get_order(lookup_id)
+                            lookup_ids: list[str] = []
+                            if order.order_hash:
+                                lookup_ids.append(order.order_hash)
+                            if order.order_id and order.order_id not in lookup_ids:
+                                lookup_ids.append(order.order_id)
+
+                            detail = None
+                            for lookup_id in lookup_ids:
+                                detail = await self.api.get_order(lookup_id)
+                                if detail is not None:
+                                    break
                             if detail and detail.get("status") == "FILLED":
                                 self._guard_failures.pop(order.order_id, None)
 
@@ -574,11 +583,18 @@ class BotEngine:
                                 if fail_count == 0:
                                     filled_list = await self.api.get_recent_filled_orders(limit=100)
                                     if filled_list is not None:
-                                        filled_ids = {
-                                            str(o.get("id") or o.get("orderId"))
-                                            for o in filled_list
-                                        }
-                                        if order.order_id in filled_ids:
+                                        filled_refs = set()
+                                        for filled in filled_list:
+                                            order_ref = filled.get("order") if isinstance(filled.get("order"), dict) else {}
+                                            for candidate in (
+                                                filled.get("id"),
+                                                filled.get("orderId"),
+                                                filled.get("hash"),
+                                                order_ref.get("hash"),
+                                            ):
+                                                if candidate:
+                                                    filled_refs.add(str(candidate))
+                                        if order.order_id in filled_refs or (order.order_hash and order.order_hash in filled_refs):
                                             self._guard_failures.pop(order.order_id, None)
                                             filled_after = time.time() - order.placed_at
                                             life_str = f"{int(filled_after // 60)}м {int(filled_after % 60)}с"
