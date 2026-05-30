@@ -173,7 +173,12 @@ class BotEngine:
         self.logger.log("Остановка бота...")
         self.running = False
 
-        # Отменяем ордера перед остановкой — без надзора они опасны
+        # Сначала останавливаем воркеры — чтобы они не переставляли ордера
+        # пока мы их отменяем ниже
+        for worker in list(self._workers.values()):
+            await worker.stop()
+
+        # Теперь отменяем все оставшиеся ордера — воркеры уже не пишут новые
         for worker in list(self._workers.values()):
             ids = worker.get_active_order_ids()
             if ids and self.order_manager:
@@ -195,9 +200,6 @@ class BotEngine:
                         f"не удалось отменить — закрой вручную!"
                     )
 
-        # Останавливаем воркеры
-        for worker in list(self._workers.values()):
-            await worker.stop()
         self._workers.clear()
 
         # Отменяем фоновые задачи
